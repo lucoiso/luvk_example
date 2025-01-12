@@ -119,68 +119,105 @@ std::int32_t main([[maybe_unused]] std::int32_t argc, [[maybe_unused]] char* arg
             auto const SwapChainModule = std::make_shared<luvk::SwapChain>();
             auto const RenderGraphModule = std::make_shared<luvk::RenderGraph>();
 
+            // Set up the events (optional) -> All set to One Time event (will be removed after executing)
+            {
+                // Events to call right after initializing the renderer module
+                {
+                    luvk::EventNode PostInitRendererFlow = luvk::EventNode::NewNode
+                    (
+                        [&] // Set the physical device and window surface
+                        {
+                            DeviceModule->SetPhysicalDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
+                            DeviceModule->SetSurface(Surface);
+                        },
+                        true
+                    )
+                    .Then
+                    (
+                        [&] // Configure the device queues and create the logical device
+                        {
+                            luvk::DeviceExtensions& ExtManager = DeviceModule->GetExtensions();
+                            ExtManager.SetExtensionState("", VK_KHR_SWAPCHAIN_EXTENSION_NAME, true);
+
+                            std::unordered_map<std::uint32_t, std::uint32_t> DeviceQueueMap{};
+                            auto const& QueueProperties = DeviceModule->GetDeviceQueueFamilyProperties();
+
+                            std::uint32_t Iterator = 0U;
+
+                            std::for_each(std::execution::seq,
+                                          std::cbegin(QueueProperties),
+                                          std::cend(QueueProperties),
+                                          [&DeviceQueueMap, &Iterator] (VkQueueFamilyProperties const& QueuePropertyIt)
+                                          {
+                                              DeviceQueueMap.emplace(Iterator++, QueuePropertyIt.queueCount);
+                                          });
+
+                            DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), nullptr);
+                        },
+                        true
+                    );
+
+                    luvk::EventGraph& RendererEventsManager = Renderer->GetEventSystem();
+                    RendererEventsManager.AddNode(std::move(PostInitRendererFlow), luvk::RendererEvents::OnPostInitialized);
+                }
+
+                // Events to call after setting the logical device
+                {
+                    luvk::EventNode PostDeviceFlow = luvk::EventNode::NewNode
+                    (
+                        [&] // Configure the memory module
+                        {
+                            MemoryModule->InitializeAllocator(Renderer,
+                                                              DeviceModule,
+                                                              VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);
+                        },
+                        true
+                    )
+                    .Then
+                    (
+                        [&] // Configure the swap chain module
+                        {
+                            luvk::SwapChain::CreationArguments Args{.ImageCount = 3U,
+                                                                    .Extent = VkExtent2D{.width = WindowWidth,
+                                                                                         .height = WindowHeight}};
+
+                            SwapChainModule->CreateSwapChain(DeviceModule, std::move(Args), nullptr);
+                        },
+                        true
+                    )
+                    .Then
+                    (
+                        [&] // Configure the Render Graph module // TODO : Replace Render Graph Examples
+                        {
+                            RenderGraphModule->InitializeRPSDevice(DeviceModule);
+
+                            RenderGraphModule->CreateRenderGraph({RPS_QUEUE_FLAG_GRAPHICS, RPS_QUEUE_FLAG_COMPUTE, RPS_QUEUE_FLAG_COPY},
+                                                                 RPS_ENTRY_REF(rpsl_triangle, main));
+
+                            RenderGraphModule->BindNode("Triangle",
+                                                        [] ([[maybe_unused]] const RpsCmdCallbackContext* const Context)
+                                                        {
+                                                            // TODO : Implement rendering callbacks
+                                                        },
+                                                        nullptr,
+                                                        RPS_CMD_CALLBACK_FLAG_NONE);
+                        },
+                        true
+                    );
+
+                    luvk::EventGraph& DeviceEventsManager = DeviceModule->GetEventSystem();
+                    DeviceEventsManager.AddNode(std::move(PostDeviceFlow), luvk::DeviceEvents::OnChangedLogicalDevice);
+                }
+            }
+
             // Initialize the modules
+            // Attention to the order:
+            //      Initialization order: First to Last (default)
+            //      Shutdown order: Last to First (reverse)
             Renderer->PostInitializeRenderer({DeviceModule,
                                               MemoryModule,
                                               SwapChainModule,
                                               RenderGraphModule});
-
-            // Set the physical device and window surface
-            {
-                DeviceModule->SetPhysicalDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
-                DeviceModule->SetSurface(Surface);
-            }
-
-            // Configure the device queues and create the logical device
-            {
-                luvk::DeviceExtensions& ExtManager = DeviceModule->GetExtensions();
-                ExtManager.SetExtensionState("", VK_KHR_SWAPCHAIN_EXTENSION_NAME, true);
-
-                std::unordered_map<std::uint32_t, std::uint32_t> DeviceQueueMap{};
-                auto const& QueueProperties = DeviceModule->GetDeviceQueueFamilyProperties();
-
-                std::uint32_t Iterator = 0U;
-
-                std::for_each(std::execution::seq,
-                              std::cbegin(QueueProperties),
-                              std::cend(QueueProperties),
-                              [&DeviceQueueMap, &Iterator] (VkQueueFamilyProperties const& QueuePropertyIt)
-                              {
-                                  DeviceQueueMap.emplace(Iterator++, QueuePropertyIt.queueCount);
-                              });
-
-                DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), nullptr);
-            }
-
-            // Configure the memory module
-            {
-                MemoryModule->InitializeAllocator(Renderer, DeviceModule, VMA_ALLOCATOR_CREATE_EXTERNALLY_SYNCHRONIZED_BIT);
-            }
-
-            // Configure the swap chain module
-            {
-                luvk::SwapChain::CreationArguments Args{.ImageCount = 3U,
-                                                        .Extent = VkExtent2D{.width = WindowWidth,
-                                                                             .height = WindowHeight}};
-
-                SwapChainModule->CreateSwapChain(DeviceModule, std::move(Args), nullptr);
-            }
-
-            // Configure the Render Graph module // TODO : Replace Render Graph Examples
-            {
-                RenderGraphModule->InitializeRPSDevice(DeviceModule);
-
-                RenderGraphModule->CreateRenderGraph({RPS_QUEUE_FLAG_GRAPHICS, RPS_QUEUE_FLAG_COMPUTE, RPS_QUEUE_FLAG_COPY},
-                                                     RPS_ENTRY_REF(rpsl_triangle, main));
-
-                RenderGraphModule->BindNode("Triangle",
-                                            [] ([[maybe_unused]] const RpsCmdCallbackContext* const Context)
-                                            {
-                                                // TODO : Implement rendering callbacks
-                                            },
-                                            nullptr,
-                                            RPS_CMD_CALLBACK_FLAG_NONE);
-            }
 
             // Application loop
             while (Window && DoPollLoop())
