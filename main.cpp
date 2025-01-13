@@ -16,6 +16,7 @@
 #include <luvk/Core/Device.hpp>
 #include "luvk/Core/Memory.hpp"
 #include <luvk/Core/RenderGraph.hpp>
+#include <luvk/Core/Debug.hpp>
 
 #pragma region RPS_Example // Will be replaced in future - From: https://gpuopen.com/learn/rps-tutorial/rps-tutorial-part1/#compiling-and-linking-the-rpsl-module
 RPS_DECLARE_RPSL_ENTRY(rpsl_triangle, main);
@@ -87,21 +88,31 @@ std::int32_t main([[maybe_unused]] std::int32_t argc, [[maybe_unused]] char* arg
                                                                       .EngineVersion = VK_MAKE_VERSION(0U, 0U, 1U)};
 
     // Enable the required extensions
-    if (std::uint32_t NumExtensions = 0U;
-        SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, nullptr))
     {
-        if (std::vector<const char*> ExtensionsData(NumExtensions, nullptr);
-            SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, std::data(ExtensionsData)))
-        {
-            luvk::InstanceExtensions& Extensions = Renderer->GetExtensions();
+        luvk::InstanceExtensions& InstanceExtensions = Renderer->GetExtensions();
 
-            std::for_each(std::execution::unseq,
-                          std::cbegin(ExtensionsData),
-                          std::cend(ExtensionsData),
-                          [&Extensions] (const char* const& ExtensionIt)
-                          {
-                              Extensions.SetExtensionState("", ExtensionIt, true);
-                          });
+        // Debugging extensions - required for the debugging module
+        {
+            constexpr auto ValidationLayer = "VK_LAYER_KHRONOS_validation";
+            InstanceExtensions.SetLayerState(ValidationLayer, true);
+            InstanceExtensions.SetExtensionState(ValidationLayer, VK_EXT_DEBUG_UTILS_EXTENSION_NAME, true);
+        }
+
+        // SDL required extensions
+        if (std::uint32_t NumExtensions = 0U;
+            SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, nullptr))
+        {
+            if (std::vector<const char*> ExtensionsData(NumExtensions, nullptr);
+                SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, std::data(ExtensionsData)))
+            {
+                std::for_each(std::execution::unseq,
+                              std::cbegin(ExtensionsData),
+                              std::cend(ExtensionsData),
+                              [&InstanceExtensions] (const char* const& ExtensionIt)
+                              {
+                                  InstanceExtensions.SetExtensionState("", ExtensionIt, true);
+                              });
+            }
         }
     }
 
@@ -114,6 +125,7 @@ std::int32_t main([[maybe_unused]] std::int32_t argc, [[maybe_unused]] char* arg
         if (VkSurfaceKHR Surface;
             SDL_Vulkan_CreateSurface(Window, VulkanInstance, &Surface))
         {
+            auto const DebugModule = std::make_shared<luvk::Debug>();
             auto const DeviceModule = std::make_shared<luvk::Device>();
             auto const MemoryModule = std::make_shared<luvk::Memory>();
             auto const SwapChainModule = std::make_shared<luvk::SwapChain>();
@@ -214,7 +226,8 @@ std::int32_t main([[maybe_unused]] std::int32_t argc, [[maybe_unused]] char* arg
             // Attention to the order:
             //      Initialization order: First to Last (default)
             //      Shutdown order: Last to First (reverse)
-            Renderer->PostInitializeRenderer({DeviceModule,
+            Renderer->PostInitializeRenderer({DebugModule,
+                                              DeviceModule,
                                               MemoryModule,
                                               SwapChainModule,
                                               RenderGraphModule});
