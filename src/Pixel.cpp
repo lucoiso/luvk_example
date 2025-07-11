@@ -4,25 +4,112 @@
 
 #include "luvk_example/Pixel.hpp"
 
+#include <array>
+#include <luvk/Libraries/ShaderCompiler.hpp>
+
 using namespace luvk_example;
 
-luvk_example::Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry, const std::size_t Index)
-    : m_Registry(std::move(Registry)),
-      m_Index(Index),
-      m_Mesh(m_Registry, m_Index) {}
+namespace
+{
+    constexpr std::array<glm::vec2, 12> PixelVertices{{{ 0.01f,  0.0f},
+                                                       { 0.00866f,  0.005f},
+                                                       { 0.005f,  0.00866f},
+                                                       { 0.0f,   0.01f},
+                                                       {-0.005f, 0.00866f},
+                                                       {-0.00866f, 0.005f},
+                                                       {-0.01f,  0.0f},
+                                                       {-0.00866f, -0.005f},
+                                                       {-0.005f, -0.00866f},
+                                                       { 0.0f,  -0.01f},
+                                                       { 0.005f, -0.00866f},
+                                                       { 0.00866f, -0.005f}}};
+    constexpr std::array<std::uint16_t, 30> PixelIndices{{0, 1, 2,
+                                                          0, 2, 3,
+                                                          0, 3, 4,
+                                                          0, 4, 5,
+                                                          0, 5, 6,
+                                                          0, 6, 7,
+                                                          0, 7, 8,
+                                                          0, 8, 9,
+                                                          0, 9, 10,
+                                                          0, 10, 11}};
 
-void luvk_example::Pixel::AddInstance(const glm::vec2 Position)
+    constexpr auto VertSrc = R"(#version 450
+                                layout(location = 0) in vec2 inPos;
+                                layout(location = 1) in vec2 offset;
+                                layout(location = 2) in float angle;
+                                layout(location = 3) in vec4 instColor;
+                                layout(location = 0) out vec4 vColor;
+                                void main() {
+                                    mat2 R = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+                                    vec2 pos = R * inPos + offset;
+                                    gl_Position = vec4(pos, 0.0, 1.0);
+                                    vColor = instColor;
+                                })";
+
+    constexpr auto FragSrc = R"(#version 450
+                                layout(location = 0) in vec4 vColor;
+                                layout(location = 0) out vec4 outColor;
+                                void main() {
+                                    outColor = vColor;
+                                })";
+}
+
+Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
+             std::shared_ptr<luvk::Device> Device,
+             std::shared_ptr<luvk::SwapChain> SwapChain)
+    : m_Registry(std::move(Registry))
+{
+    m_Pipeline = std::make_shared<luvk::Pipeline>();
+    auto Vert = luvk::CompileGLSLToSPIRV(VertSrc, EShLangVertex);
+    auto Frag = luvk::CompileGLSLToSPIRV(FragSrc, EShLangFragment);
+
+    const VkExtent2D Extent = SwapChain->GetExtent();
+    const std::array Formats{SwapChain->m_Arguments.Format};
+    constexpr std::array Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
+                                  VkVertexInputBindingDescription{1, sizeof(luvk::MeshInstance), VK_VERTEX_INPUT_RATE_INSTANCE}};
+    const std::array Attrs{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+                           VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(luvk::MeshInstance, Offset)},
+                           VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::MeshInstance, Angle)},
+                           VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::MeshInstance, Color)}};
+
+    m_Pipeline->CreateGraphicsPipeline(Device,
+                                       {.Extent = Extent,
+                                        .ColorFormats = Formats,
+                                        .RenderPass = SwapChain->GetRenderPass(),
+                                        .Subpass = 0,
+                                        .VertexShader = Vert,
+                                        .FragmentShader = Frag,
+                                        .SetLayouts = {},
+                                        .Bindings = std::array{Bindings.at(0), Bindings.at(1)},
+                                        .Attributes = std::array{Attrs.at(0), Attrs.at(1), Attrs.at(2), Attrs.at(3)},
+                                        .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                        .CullMode = VK_CULL_MODE_NONE});
+
+    m_Index = m_Registry->RegisterMesh(std::as_bytes(std::span{PixelVertices}),
+                                       std::as_bytes(std::span{PixelIndices}),
+                                       VK_NULL_HANDLE,
+                                       nullptr,
+                                       nullptr,
+                                       nullptr,
+                                       nullptr,
+                                       {},
+                                       m_Pipeline,
+                                       Device);
+    m_Mesh = luvk::Mesh(m_Registry, m_Index);
+}
+
+void Pixel::AddInstance(const glm::vec2 Position)
 {
     luvk::MeshRegistry::InstanceInfo Instance{.XForm = {.Position = {Position.x, Position.y, 0.F}}, .Color = {1.F, 1.F, 1.F, 1.F}};
     m_Instances.push_back(std::move(Instance));
-
     if (m_Registry)
     {
         m_Registry->UpdateInstances(m_Index, m_Instances);
     }
 }
 
-luvk::Mesh& luvk_example::Pixel::GetMesh() noexcept
+luvk::Mesh& Pixel::GetMesh() noexcept
 {
     return m_Mesh;
 }

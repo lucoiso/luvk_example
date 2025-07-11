@@ -5,6 +5,10 @@
 #pragma once
 
 #include "InputManager.hpp"
+#include "Camera.hpp"
+#include "Cube.hpp"
+#include "Triangle.hpp"
+#include "Pixel.hpp"
 
 #include <memory>
 
@@ -35,11 +39,18 @@ namespace luvk_example
         std::shared_ptr<luvk::MeshRegistry> m_MeshRegistryModule{};
         std::shared_ptr<luvk::ThreadPool> m_ThreadPoolModule{};
 
+        std::unique_ptr<Cube> m_Cube{};
+        std::unique_ptr<Triangle> m_Triangle{};
+        std::unique_ptr<Pixel> m_Pixel{};
+        Camera m_Camera{};
+        bool m_CanRender{true};
+
     public:
         Application(std::uint32_t Width, std::uint32_t Height);
         ~Application();
 
         bool Initialize();
+        void Run();
 
         [[nodiscard]] InputManager& GetInput() noexcept
         {

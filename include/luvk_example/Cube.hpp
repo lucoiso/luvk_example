@@ -7,6 +7,11 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include <luvk/Core/MeshRegistry.hpp>
+#include <luvk/Core/Device.hpp>
+#include <luvk/Core/SwapChain.hpp>
+#include <luvk/Core/Memory.hpp>
+#include <luvk/Core/Pipeline.hpp>
+#include <luvk/Core/Buffer.hpp>
 #include <luvk/Types/Mesh.hpp>
 
 namespace luvk_example
@@ -14,11 +19,15 @@ namespace luvk_example
     class Cube
     {
         std::shared_ptr<luvk::MeshRegistry> m_Registry{};
+        std::shared_ptr<luvk::Pipeline> m_Pipeline{};
         std::size_t m_Index{};
         luvk::Mesh m_Mesh{};
 
     public:
-        Cube(std::shared_ptr<luvk::MeshRegistry> Registry, std::size_t Index);
+        Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
+             std::shared_ptr<luvk::Device> Device,
+             std::shared_ptr<luvk::SwapChain> SwapChain,
+             std::shared_ptr<luvk::Memory> Memory);
         void Update(float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const;
         [[nodiscard]] luvk::Mesh& GetMesh() noexcept;
     };

@@ -8,6 +8,12 @@
 #include <execution>
 #include <vector>
 #include <unordered_map>
+#include <chrono>
+#include <thread>
+#include <array>
+
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <luvk/Libraries/ShaderCompiler.hpp>
 
@@ -110,6 +116,131 @@ bool luvk_example::Application::Initialize()
 
     m_SynchronizationModule->Initialize(m_DeviceModule, ImageCount);
     m_SynchronizationModule->SetupFrames(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule, m_ThreadPoolModule);
+    luvk::InitializeGlslang();
+
+    m_Cube = std::make_unique<Cube>(m_MeshRegistryModule, m_DeviceModule, m_SwapChainModule, m_MemoryModule);
+    m_Triangle = std::make_unique<Triangle>(m_MeshRegistryModule, m_DeviceModule, m_SwapChainModule, m_CommandPoolModule);
+    m_Pixel = std::make_unique<Pixel>(m_MeshRegistryModule, m_DeviceModule, m_SwapChainModule);
+
+    m_Renderer->InitializeRenderLoop(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule, m_MeshRegistryModule, m_ThreadPoolModule);
+    m_Renderer->GetEventSystem().AddNode(luvk::EventNode::NewNode([]
+                                       {
+                                           SDL_Log("Render loop initialized");
+                                       }),
+                                       luvk::RendererEvents::OnRenderLoopInitialized);
+
+
+
+    m_Input.BindEvent(SDL_WINDOWEVENT,
+                      [&](SDL_Event const& e)
+                      {
+                          if (e.window.event == SDL_WINDOWEVENT_RESIZED || e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
+                              e.window.event == SDL_WINDOWEVENT_MAXIMIZED)
+                          {
+                              m_Renderer->SetPaused(true);
+                              int NewW = 0, NewH = 0;
+                              SDL_Vulkan_GetDrawableSize(Window, &NewW, &NewH);
+                              m_Renderer->Refresh({static_cast<std::uint32_t>(NewW), static_cast<std::uint32_t>(NewH)});
+                              m_Renderer->SetPaused(false);
+                          }
+                          else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
+                          {
+                              m_Renderer->SetPaused(true);
+                              m_CanRender = false;
+                          }
+                          else if (e.window.event == SDL_WINDOWEVENT_RESTORED)
+                          {
+                              m_Renderer->SetPaused(false);
+                              m_CanRender = true;
+                          }
+                      });
+
+    m_Input.BindEvent(SDL_MOUSEBUTTONDOWN,
+                      [&](SDL_Event const& e)
+                      {
+                          if (e.button.button == SDL_BUTTON_RIGHT)
+                          {
+                              int W = 0, H = 0;
+                              SDL_Vulkan_GetDrawableSize(Window, &W, &H);
+                              const glm::vec2 Position{2.F * e.button.x / static_cast<float>(W) - 1.F, 2.F * e.button.y / static_cast<float>(H) - 1.F};
+                              m_Triangle->AddInstance(Position);
+                          }
+                      });
+
+    m_Input.BindEvent(SDL_MOUSEMOTION,
+                      [&](SDL_Event const& e)
+                      {
+                          if (m_Input.LeftHeld())
+                          {
+                              int W = 0, H = 0;
+                              SDL_Vulkan_GetDrawableSize(Window, &W, &H);
+                              const glm::vec2 Position{2.F * e.motion.x / static_cast<float>(W) - 1.F, 2.F * e.motion.y / static_cast<float>(H) - 1.F};
+                              m_Pixel->AddInstance(Position);
+                          }
+                      });
 
     return true;
+}
+
+void luvk_example::Application::Run()
+{
+    SDL_Window* const Window = m_Input.GetWindow();
+
+    auto LastTime = std::chrono::high_resolution_clock::now();
+    int Frames = 0;
+    auto FpsTime = LastTime;
+
+    while (m_Input.Running())
+    {
+        m_Input.ProcessEvents();
+        if (!m_Input.Running())
+        {
+            break;
+        }
+
+        int CurrentWidth = 0;
+        int CurrentHeight = 0;
+        SDL_Vulkan_GetDrawableSize(Window, &CurrentWidth, &CurrentHeight);
+
+        if (!m_CanRender)
+        {
+            continue;
+        }
+
+        auto CurrentTime = std::chrono::high_resolution_clock::now();
+        float DeltaTime = std::chrono::duration<float>(CurrentTime - LastTime).count();
+        LastTime = CurrentTime;
+
+        m_Camera.Update(DeltaTime, m_Input);
+
+        glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(CurrentWidth) / static_cast<float>(CurrentHeight), 0.1F, 10.F);
+        Proj[1][1] *= -1.F;
+
+        if (m_Triangle)
+        {
+            m_Triangle->Update(DeltaTime);
+        }
+
+        if (m_Cube)
+        {
+            m_Cube->Update(DeltaTime, m_Camera.GetViewMatrix(), Proj);
+        }
+
+        m_Renderer->DrawFrame();
+
+        ++Frames;
+        if (std::chrono::duration<float>(CurrentTime - FpsTime).count() >= 1.F)
+        {
+            float Fps = static_cast<float>(Frames) / std::chrono::duration<float>(CurrentTime - FpsTime).count();
+            std::array<char, 64> Title{};
+            std::snprintf(Title.data(), Title.size(), "LuVK Example - %.0f FPS", Fps);
+            SDL_SetWindowTitle(Window, Title.data());
+            FpsTime = CurrentTime;
+            Frames = 0;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    }
+
+    luvk::FinalizeGlslang();
 }
