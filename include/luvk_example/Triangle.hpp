@@ -24,8 +24,8 @@ namespace luvk_example
 
     public:
         Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
-                 std::shared_ptr<luvk::Device> Device,
-                 std::shared_ptr<luvk::SwapChain> Swap);
+                 const std::shared_ptr<luvk::Device>& Device,
+                 const std::shared_ptr<luvk::SwapChain>& Swap);
         void AddInstance(glm::vec2 Position);
         [[nodiscard]] luvk::Mesh& GetMesh() noexcept;
     };

@@ -13,12 +13,15 @@ using namespace luvk_example;
 namespace
 {
     constexpr auto TriVertSrc = R"(#version 450
+
                                    layout(location = 0) in vec2 inPos;
                                    layout(location = 1) in vec2 offset;
                                    layout(location = 2) in float angle;
                                    layout(location = 3) in vec4 instColor;
                                    layout(location = 0) out vec4 vColor;
-                                   void main() {
+
+                                   void main()
+                                   {
                                        mat2 R = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
                                        vec2 pos = R * inPos + offset;
                                        gl_Position = vec4(pos, 0.0, 1.0);
@@ -26,21 +29,25 @@ namespace
                                    })";
 
     constexpr auto TriFragSrc = R"(#version 450
+
                                    layout(location = 0) in vec4 vColor;
                                    layout(location = 0) out vec4 outColor;
-                                   void main() {
+
+                                   void main()
+                                   {
                                        outColor = vColor;
                                    })";
 
     constexpr std::array<glm::vec2, 3> TriVertices{{{-0.05f, -0.05f},
-                                                    { 0.05f, -0.05f},
-                                                    { 0.0f,   0.1f}}};
+                                                    {0.05f, -0.05f},
+                                                    {0.0f, 0.1f}}};
+
     constexpr std::array<std::uint16_t, 3> TriIndices{{0, 1, 2}};
 } // namespace
 
 luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
-                                 std::shared_ptr<luvk::Device> Device,
-                                 std::shared_ptr<luvk::SwapChain> Swap)
+                                 const std::shared_ptr<luvk::Device>& Device,
+                                 const std::shared_ptr<luvk::SwapChain>& Swap)
     : m_Registry(std::move(Registry)),
       m_Pipeline(std::make_shared<luvk::Pipeline>())
 {
@@ -59,17 +66,17 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                               VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::MeshInstance, Color)}};
 
     m_Pipeline->CreateGraphicsPipeline(Device,
-                                        {.Extent = Extent,
-                                         .ColorFormats = Formats,
-                                         .RenderPass = Swap->GetRenderPass(),
-                                         .Subpass = 0,
-                                         .VertexShader = TriVert,
-                                         .FragmentShader = TriFrag,
-                                         .SetLayouts = {},
-                                         .Bindings = std::array{TriBindings.at(0), TriBindings.at(1)},
-                                         .Attributes = std::array{TriAttrs.at(0), TriAttrs.at(1), TriAttrs.at(2), TriAttrs.at(3)},
-                                         .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                         .CullMode = VK_CULL_MODE_NONE});
+                                       {.Extent = Extent,
+                                        .ColorFormats = Formats,
+                                        .RenderPass = Swap->GetRenderPass(),
+                                        .Subpass = 0,
+                                        .VertexShader = TriVert,
+                                        .FragmentShader = TriFrag,
+                                        .SetLayouts = {},
+                                        .Bindings = std::array{TriBindings.at(0), TriBindings.at(1)},
+                                        .Attributes = std::array{TriAttrs.at(0), TriAttrs.at(1), TriAttrs.at(2), TriAttrs.at(3)},
+                                        .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                        .CullMode = VK_CULL_MODE_NONE});
 
     m_Index = m_Registry->RegisterMesh(std::as_bytes(std::span{TriVertices}),
                                        std::as_bytes(std::span{TriIndices}),

@@ -13,45 +13,48 @@ using namespace luvk_example;
 namespace
 {
     constexpr auto CubeVertSrc = R"(#version 450
-                                    layout(push_constant) uniform Push {
+
+                                    layout(push_constant) uniform Push
+                                    {
                                         mat4 mvp;
                                         vec4 color;
                                     } pc;
+
                                     layout(location = 0) in vec3 inPos;
                                     layout(location = 0) out vec4 vColor;
-                                    void main() {
+
+                                    void main()
+                                    {
                                         gl_Position = pc.mvp * vec4(inPos, 1.0);
                                         vColor = pc.color;
                                     })";
 
     constexpr auto CubeFragSrc = R"(#version 450
+
                                     layout(location = 0) in vec4 vColor;
                                     layout(location = 0) out vec4 outColor;
-                                    void main() {
+
+                                    void main()
+                                    {
                                         outColor = vColor;
                                     })";
 
     constexpr std::array<glm::vec3, 8> CubeVertices{{{-0.5f, -0.5f, -0.5f},
-                                                     { 0.5f, -0.5f, -0.5f},
-                                                     { 0.5f,  0.5f, -0.5f},
-                                                     {-0.5f,  0.5f, -0.5f},
-                                                     {-0.5f, -0.5f,  0.5f},
-                                                     { 0.5f, -0.5f,  0.5f},
-                                                     { 0.5f,  0.5f,  0.5f},
-                                                     {-0.5f,  0.5f,  0.5f}}};
+                                                     {0.5f, -0.5f, -0.5f},
+                                                     {0.5f, 0.5f, -0.5f},
+                                                     {-0.5f, 0.5f, -0.5f},
+                                                     {-0.5f, -0.5f, 0.5f},
+                                                     {0.5f, -0.5f, 0.5f},
+                                                     {0.5f, 0.5f, 0.5f},
+                                                     {-0.5f, 0.5f, 0.5f}}};
 
-    constexpr std::array<std::uint16_t, 36> CubeIndices{{0, 1, 2, 2, 3, 0,
-                                                         4, 5, 6, 6, 7, 4,
-                                                         0, 1, 5, 5, 4, 0,
-                                                         2, 3, 7, 7, 6, 2,
-                                                         1, 2, 6, 6, 5, 1,
-                                                         3, 0, 4, 4, 7, 3}};
+    constexpr std::array<std::uint16_t, 36> CubeIndices{{0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 0, 1, 5, 5, 4, 0, 2, 3, 7, 7, 6, 2, 1, 2, 6, 6, 5, 1, 3, 0, 4, 4, 7, 3}};
 } // namespace
 
 luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
-                         std::shared_ptr<luvk::Device> Device,
-                         std::shared_ptr<luvk::SwapChain> Swap,
-                         std::shared_ptr<luvk::Memory> Memory)
+                         const std::shared_ptr<luvk::Device>& Device,
+                         const std::shared_ptr<luvk::SwapChain>& Swap,
+                         const std::shared_ptr<luvk::Memory>& Memory)
     : m_Registry(std::move(Registry)),
       m_Pipeline(std::make_shared<luvk::Pipeline>()),
       m_UBO(std::make_shared<luvk::Buffer>())

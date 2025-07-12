@@ -11,12 +11,15 @@ using namespace luvk_example;
 namespace
 {
     constexpr auto TriVertSrc = R"(#version 450
+
                                    layout(location = 0) in vec2 inPos;
                                    layout(location = 1) in vec2 offset;
                                    layout(location = 2) in float angle;
                                    layout(location = 3) in vec4 instColor;
                                    layout(location = 0) out vec4 vColor;
-                                   void main() {
+
+                                   void main()
+                                   {
                                        mat2 R = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
                                        vec2 pos = R * inPos + offset;
                                        gl_Position = vec4(pos, 0.0, 1.0);
@@ -24,39 +27,34 @@ namespace
                                    })";
 
     constexpr auto TriFragSrc = R"(#version 450
+
                                    layout(location = 0) in vec4 vColor;
                                    layout(location = 0) out vec4 outColor;
-                                   void main() {
+
+                                   void main()
+                                   {
                                        outColor = vColor;
                                    })";
 
-    constexpr std::array<glm::vec2, 12> PixelVertices{{{ 0.01f,  0.0f},
-                                                       { 0.00866f,  0.005f},
-                                                       { 0.005f,  0.00866f},
-                                                       { 0.0f,   0.01f},
+    constexpr std::array<glm::vec2, 12> PixelVertices{{{0.01f, 0.0f},
+                                                       {0.00866f, 0.005f},
+                                                       {0.005f, 0.00866f},
+                                                       {0.0f, 0.01f},
                                                        {-0.005f, 0.00866f},
                                                        {-0.00866f, 0.005f},
-                                                       {-0.01f,  0.0f},
+                                                       {-0.01f, 0.0f},
                                                        {-0.00866f, -0.005f},
                                                        {-0.005f, -0.00866f},
-                                                       { 0.0f,  -0.01f},
-                                                       { 0.005f, -0.00866f},
-                                                       { 0.00866f, -0.005f}}};
-    constexpr std::array<std::uint16_t, 30> PixelIndices{{0, 1, 2,
-                                                          0, 2, 3,
-                                                          0, 3, 4,
-                                                          0, 4, 5,
-                                                          0, 5, 6,
-                                                          0, 6, 7,
-                                                          0, 7, 8,
-                                                          0, 8, 9,
-                                                          0, 9, 10,
-                                                          0, 10, 11}};
+                                                       {0.0f, -0.01f},
+                                                       {0.005f, -0.00866f},
+                                                       {0.00866f, -0.005f}}};
+
+    constexpr std::array<std::uint16_t, 30> PixelIndices{{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 7, 0, 7, 8, 0, 8, 9, 0, 9, 10, 0, 10, 11}};
 } // namespace
 
 luvk_example::Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
-                           std::shared_ptr<luvk::Device> Device,
-                           std::shared_ptr<luvk::SwapChain> Swap)
+                           const std::shared_ptr<luvk::Device>& Device,
+                           const std::shared_ptr<luvk::SwapChain>& Swap)
     : m_Registry(std::move(Registry)),
       m_Pipeline(std::make_shared<luvk::Pipeline>())
 {
@@ -75,17 +73,17 @@ luvk_example::Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
                               VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::MeshInstance, Color)}};
 
     m_Pipeline->CreateGraphicsPipeline(Device,
-                                        {.Extent = Extent,
-                                         .ColorFormats = Formats,
-                                         .RenderPass = Swap->GetRenderPass(),
-                                         .Subpass = 0,
-                                         .VertexShader = TriVert,
-                                         .FragmentShader = TriFrag,
-                                         .SetLayouts = {},
-                                         .Bindings = std::array{TriBindings.at(0), TriBindings.at(1)},
-                                         .Attributes = std::array{TriAttrs.at(0), TriAttrs.at(1), TriAttrs.at(2), TriAttrs.at(3)},
-                                         .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                         .CullMode = VK_CULL_MODE_NONE});
+                                       {.Extent = Extent,
+                                        .ColorFormats = Formats,
+                                        .RenderPass = Swap->GetRenderPass(),
+                                        .Subpass = 0,
+                                        .VertexShader = TriVert,
+                                        .FragmentShader = TriFrag,
+                                        .SetLayouts = {},
+                                        .Bindings = std::array{TriBindings.at(0), TriBindings.at(1)},
+                                        .Attributes = std::array{TriAttrs.at(0), TriAttrs.at(1), TriAttrs.at(2), TriAttrs.at(3)},
+                                        .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                        .CullMode = VK_CULL_MODE_NONE});
 
     m_Index = m_Registry->RegisterMesh(std::as_bytes(std::span{PixelVertices}),
                                        std::as_bytes(std::span{PixelIndices}),

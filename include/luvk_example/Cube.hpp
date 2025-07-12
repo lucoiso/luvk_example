@@ -25,9 +25,9 @@ namespace luvk_example
 
     public:
         Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
-             std::shared_ptr<luvk::Device> Device,
-             std::shared_ptr<luvk::SwapChain> Swap,
-             std::shared_ptr<luvk::Memory> Memory);
+             const std::shared_ptr<luvk::Device>& Device,
+             const std::shared_ptr<luvk::SwapChain>& Swap,
+             const std::shared_ptr<luvk::Memory>& Memory);
         void Update(float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const;
         [[nodiscard]] luvk::Mesh& GetMesh() noexcept;
     };

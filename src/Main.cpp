@@ -63,10 +63,10 @@ int main()
     Camera AppCamera{};
 
     Input.BindEvent(SDL_WINDOWEVENT,
-                    [&](SDL_Event const& e)
+                    [&](SDL_Event const& Event)
                     {
-                        if (e.window.event == SDL_WINDOWEVENT_RESIZED || e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
-                            e.window.event == SDL_WINDOWEVENT_MAXIMIZED)
+                        if (Event.window.event == SDL_WINDOWEVENT_RESIZED || Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
+                            Event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
                         {
                             Renderer->SetPaused(true);
                             int NewW = 0, NewH = 0;
@@ -74,12 +74,12 @@ int main()
                             Renderer->Refresh({static_cast<std::uint32_t>(NewW), static_cast<std::uint32_t>(NewH)});
                             Renderer->SetPaused(false);
                         }
-                        else if (e.window.event == SDL_WINDOWEVENT_MINIMIZED)
+                        else if (Event.window.event == SDL_WINDOWEVENT_MINIMIZED)
                         {
                             Renderer->SetPaused(true);
                             CanRender = false;
                         }
-                        else if (e.window.event == SDL_WINDOWEVENT_RESTORED)
+                        else if (Event.window.event == SDL_WINDOWEVENT_RESTORED)
                         {
                             Renderer->SetPaused(false);
                             CanRender = true;
@@ -87,25 +87,25 @@ int main()
                     });
 
     Input.BindEvent(SDL_MOUSEBUTTONDOWN,
-                    [&](SDL_Event const& e)
+                    [&](SDL_Event const& Event)
                     {
-                        if (e.button.button == SDL_BUTTON_RIGHT)
+                        if (Event.button.button == SDL_BUTTON_RIGHT)
                         {
                             int W = 0, H = 0;
                             SDL_Vulkan_GetDrawableSize(Window, &W, &H);
-                            const glm::vec2 Position{2.F * e.button.x / static_cast<float>(W) - 1.F, 2.F * e.button.y / static_cast<float>(H) - 1.F};
+                            const glm::vec2 Position{2.F * Event.button.x / static_cast<float>(W) - 1.F, 2.F * Event.button.y / static_cast<float>(H) - 1.F};
                             TriangleMesh.AddInstance(Position);
                         }
                     });
 
     Input.BindEvent(SDL_MOUSEMOTION,
-                    [&](SDL_Event const& e)
+                    [&](SDL_Event const& Event)
                     {
                         if (Input.LeftHeld())
                         {
                             int W = 0, H = 0;
                             SDL_Vulkan_GetDrawableSize(Window, &W, &H);
-                            const glm::vec2 Position{2.F * e.motion.x / static_cast<float>(W) - 1.F, 2.F * e.motion.y / static_cast<float>(H) - 1.F};
+                            const glm::vec2 Position{2.F * Event.motion.x / static_cast<float>(W) - 1.F, 2.F * Event.motion.y / static_cast<float>(H) - 1.F};
                             PixelMesh.AddInstance(Position);
                         }
                     });
