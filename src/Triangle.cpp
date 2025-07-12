@@ -110,23 +110,20 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
 
     m_Mesh = luvk::Mesh(m_Registry, m_Index);
 
-    // Setup compute pipeline to update instance buffer
     VkDescriptorSetLayoutBinding Bind{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
     m_Descriptor->CreateLayout(Device, {.Bindings = std::array{Bind}});
 
-    VkDescriptorPoolSize PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
+    constexpr VkDescriptorPoolSize PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
     m_DescriptorPool->CreateDescriptorPool(Device, 1, std::array{PoolSize});
     m_Descriptor->Allocate(Device, m_DescriptorPool);
-
-    auto& entry = m_Registry->GetMeshEntry(m_Index);
-    m_Descriptor->UpdateStorage(Device, entry.InstanceBuffer->GetHandle(), entry.InstanceBuffer->GetSize());
 
     auto TriComp = luvk::CompileGLSLToSPIRV(TriCompSrc, EShLangCompute);
     constexpr VkPushConstantRange Pc{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float)};
     m_Compute->CreateComputePipeline(Device, {.ComputeShader = TriComp, .SetLayouts = std::array{m_Descriptor->GetLayout()}, .PushConstants = std::array{Pc}});
 
-    auto Buffers = CmdPool->AllocateBuffers(Device->GetLogicalDevice(), 1);
+    const auto Buffers = CmdPool->AllocateBuffers(Device->GetLogicalDevice(), 1);
     m_ComputeCmd = Buffers.front();
+
     const auto qFamily = Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
     m_Queue = Device->GetQueue(qFamily);
 }

@@ -9,8 +9,6 @@
 #include <vector>
 #include <unordered_map>
 
-#include <luvk/Libraries/ShaderCompiler.hpp>
-
 using namespace luvk_example;
 
 luvk_example::Application::Application(const std::uint32_t Width, const std::uint32_t Height)
@@ -116,7 +114,10 @@ bool luvk_example::Application::Initialize()
                       DeviceQueueMap.emplace(Iterator++, QueuePropertyIt.queueCount);
                   });
 
-    m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), nullptr);
+    constexpr VkPhysicalDeviceMeshShaderFeaturesEXT MeshShaderFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+                                                                       .taskShader = VK_TRUE,
+                                                                       .meshShader = VK_TRUE};
+    m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), &MeshShaderFeatures);
 
     constexpr std::uint32_t ImageCount = 3U;
     m_SwapChainModule->CreateSwapChain(m_DeviceModule, luvk::SwapChain::CreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}}, nullptr);

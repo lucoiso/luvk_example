@@ -4,7 +4,6 @@
 
 #include "luvk_example/Cube.hpp"
 #include <glm/gtc/matrix_transform.hpp>
-#include <cmath>
 #include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 
@@ -16,15 +15,15 @@ namespace
                                     #extension GL_EXT_mesh_shader : require
 
                                     layout(local_size_x = 1) in;
-                                    layout(triangles) out;
                                     layout(max_vertices = 4, max_primitives = 2) out;
+                                    layout(triangles) out;
 
                                     layout(push_constant) uniform Push
                                     {
                                         mat4 mvp;
                                     } pc;
 
-                                    perprimitiveEXT out PerPrim
+                                    layout(location = 0) perprimitiveEXT out PerPrim
                                     {
                                         vec4 color;
                                     } prim[];
