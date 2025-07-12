@@ -14,9 +14,18 @@
 using namespace luvk_example;
 
 luvk_example::Application::Application(const std::uint32_t Width, const std::uint32_t Height)
-    : m_Input(Width, Height),
+    : m_Input(),
       m_Width(Width),
-      m_Height(Height) {}
+      m_Height(Height)
+{
+    SDL_Init(SDL_INIT_EVERYTHING);
+    m_Window = SDL_CreateWindow("LuVK Example",
+                                SDL_WINDOWPOS_CENTERED,
+                                SDL_WINDOWPOS_CENTERED,
+                                static_cast<int>(Width),
+                                static_cast<int>(Height),
+                                SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+}
 
 luvk_example::Application::~Application()
 {
@@ -24,11 +33,16 @@ luvk_example::Application::~Application()
     {
         m_DeviceModule->WaitIdle();
     }
+    if (m_Window)
+    {
+        SDL_DestroyWindow(m_Window);
+    }
+    SDL_Quit();
 }
 
 bool luvk_example::Application::Initialize()
 {
-    SDL_Window* const Window = m_Input.GetWindow();
+    SDL_Window* const Window = m_Window;
     m_Renderer = std::make_shared<luvk::Renderer>();
     m_Renderer->PreInitializeRenderer();
 
