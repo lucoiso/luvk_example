@@ -98,6 +98,18 @@ bool luvk_example::Application::Initialize()
     m_DeviceModule->SetPhysicalDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
     m_DeviceModule->SetSurface(Surface);
 
+    auto& DevExt = m_DeviceModule->GetExtensions();
+    if (DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
+    {
+        DevExt.SetExtensionState("", VK_EXT_MESH_SHADER_EXTENSION_NAME, true);
+    }
+
+    VkPhysicalDeviceMeshShaderFeaturesEXT meshFeatures{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT};
+    if (DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
+    {
+        meshFeatures.meshShader = VK_TRUE;
+    }
+
     std::unordered_map<std::uint32_t, std::uint32_t> DeviceQueueMap{};
     auto const& QueueProperties = m_DeviceModule->GetDeviceQueueFamilyProperties();
     std::uint32_t Iterator = 0U;
@@ -110,7 +122,7 @@ bool luvk_example::Application::Initialize()
                       DeviceQueueMap.emplace(Iterator++, QueuePropertyIt.queueCount);
                   });
 
-    m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), nullptr);
+    m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), &meshFeatures);
 
     constexpr std::uint32_t ImageCount = 3U;
     m_SwapChainModule->CreateSwapChain(m_DeviceModule, luvk::SwapChain::CreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}}, nullptr);
