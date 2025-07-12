@@ -49,7 +49,7 @@ int main()
         auto ThreadPoolModule = App.GetThreadPool();
 
         Cube CubeMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
-        Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule};
+        Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Pixel PixelMesh{MeshRegistryModule, DeviceModule, SwapChainModule};
 
         Renderer->InitializeRenderLoop(DeviceModule, SwapChainModule, CommandPoolModule, MeshRegistryModule, ThreadPoolModule);
@@ -142,6 +142,7 @@ int main()
             glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(CurrentWidth) / static_cast<float>(CurrentHeight), 0.1F, 10.F);
             Proj[1][1] *= -1.F;
             CubeMesh.Update(DeltaTime, AppCamera.GetViewMatrix(), Proj);
+            TriangleMesh.Update(DeltaTime);
 
             Renderer->DrawFrame();
 
