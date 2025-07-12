@@ -5,6 +5,7 @@
 #pragma once
 
 #include "InputManager.hpp"
+#include <SDL2/SDL.h>
 
 #include <memory>
 
@@ -23,6 +24,7 @@ namespace luvk_example
     class Application
     {
         InputManager m_Input;
+        SDL_Window* m_Window{};
         std::uint32_t m_Width{};
         std::uint32_t m_Height{};
         std::shared_ptr<luvk::Renderer> m_Renderer{};
@@ -84,6 +86,11 @@ namespace luvk_example
         [[nodiscard]] std::shared_ptr<luvk::ThreadPool> const& GetThreadPool() const noexcept
         {
             return m_ThreadPoolModule;
+        }
+
+        [[nodiscard]] SDL_Window* GetWindow() const noexcept
+        {
+            return m_Window;
         }
     };
 } // namespace luvk_example
