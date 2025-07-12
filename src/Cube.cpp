@@ -12,31 +12,58 @@ using namespace luvk_example;
 
 namespace
 {
-    constexpr auto CubeVertSrc = R"(#version 450
+    constexpr auto CubeMeshSrc = R"(#version 450
+                                    #extension GL_EXT_mesh_shader : require
+
+                                    layout(local_size_x = 1) in;
+                                    layout(triangles) out;
+                                    layout(max_vertices = 4, max_primitives = 2) out;
 
                                     layout(push_constant) uniform Push
                                     {
                                         mat4 mvp;
-                                        vec4 color;
                                     } pc;
 
-                                    layout(location = 0) in vec3 inPos;
-                                    layout(location = 0) out vec4 vColor;
+                                    perprimitiveEXT out PerPrim
+                                    {
+                                        vec4 color;
+                                    } prim[];
 
                                     void main()
                                     {
-                                        gl_Position = pc.mvp * vec4(inPos, 1.0);
-                                        vColor = pc.color;
+                                        const vec3 positions[6][4] = vec3[6][4](
+                                            vec3[4](vec3(-0.5,-0.5,-0.5), vec3(0.5,-0.5,-0.5), vec3(0.5,0.5,-0.5), vec3(-0.5,0.5,-0.5)),
+                                            vec3[4](vec3(-0.5,-0.5,0.5), vec3(0.5,-0.5,0.5), vec3(0.5,0.5,0.5), vec3(-0.5,0.5,0.5)),
+                                            vec3[4](vec3(-0.5,-0.5,-0.5), vec3(-0.5,0.5,-0.5), vec3(-0.5,0.5,0.5), vec3(-0.5,-0.5,0.5)),
+                                            vec3[4](vec3(0.5,-0.5,-0.5), vec3(0.5,0.5,-0.5), vec3(0.5,0.5,0.5), vec3(0.5,-0.5,0.5)),
+                                            vec3[4](vec3(-0.5,0.5,-0.5), vec3(0.5,0.5,-0.5), vec3(0.5,0.5,0.5), vec3(-0.5,0.5,0.5)),
+                                            vec3[4](vec3(-0.5,-0.5,-0.5), vec3(0.5,-0.5,-0.5), vec3(0.5,-0.5,0.5), vec3(-0.5,-0.5,0.5)));
+
+                                        const vec4 colors[6] = vec4[6](
+                                            vec4(1,0,0,1), vec4(0,1,0,1), vec4(0,0,1,1),
+                                            vec4(1,1,0,1), vec4(1,0,1,1), vec4(0,1,1,1));
+
+                                        uint id = gl_WorkGroupID.x;
+                                        SetMeshOutputsEXT(4,2);
+                                        for (int i = 0; i < 4; ++i)
+                                        {
+                                            gl_MeshVerticesEXT[i].gl_Position = pc.mvp * vec4(positions[id][i], 1.0);
+                                        }
+                                        gl_PrimitiveTriangleIndicesEXT[0] = uvec3(0,1,2);
+                                        gl_PrimitiveTriangleIndicesEXT[1] = uvec3(2,3,0);
+                                        prim[0].color = colors[id];
+                                        prim[1].color = colors[id];
                                     })";
 
     constexpr auto CubeFragSrc = R"(#version 450
+                                    #extension GL_EXT_mesh_shader : require
 
-                                    layout(location = 0) in vec4 vColor;
+                                    layout(location = 0) perprimitiveEXT in vec4 color;
                                     layout(location = 0) out vec4 outColor;
 
                                     void main()
                                     {
-                                        outColor = vColor;
+                                        outColor = color;
                                     })";
 
     constexpr std::array<glm::vec3, 8> CubeVertices{{{-0.5f, -0.5f, -0.5f},
@@ -53,45 +80,36 @@ namespace
 
 luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
                          const std::shared_ptr<luvk::Device>& Device,
-                         const std::shared_ptr<luvk::SwapChain>& Swap,
-                         const std::shared_ptr<luvk::Memory>& Memory)
+                         const std::shared_ptr<luvk::SwapChain>& Swap)
     : m_Registry(std::move(Registry)),
-      m_Pipeline(std::make_shared<luvk::Pipeline>()),
-      m_UBO(std::make_shared<luvk::Buffer>())
+      m_Pipeline(std::make_shared<luvk::Pipeline>())
 {
-    auto CubeVert = luvk::CompileGLSLToSPIRV(CubeVertSrc, EShLangVertex);
     auto CubeFrag = luvk::CompileGLSLToSPIRV(CubeFragSrc, EShLangFragment);
 
     const VkExtent2D Extent = Swap->GetExtent();
     const std::array Formats{Swap->m_Arguments.Format};
 
-    constexpr VkVertexInputBindingDescription CubeBinding{0, sizeof(glm::vec3), VK_VERTEX_INPUT_RATE_VERTEX};
-    constexpr VkVertexInputAttributeDescription CubeAttr{0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0};
-    constexpr VkPushConstantRange CubePC{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4) + sizeof(glm::vec4)};
+    constexpr VkPushConstantRange CubePC{VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(glm::mat4)};
 
-    m_Pipeline->CreateGraphicsPipeline(Device,
-                                       {.Extent = Extent,
-                                        .ColorFormats = Formats,
-                                        .RenderPass = Swap->GetRenderPass(),
-                                        .Subpass = 0,
-                                        .VertexShader = CubeVert,
-                                        .FragmentShader = CubeFrag,
-                                        .SetLayouts = {},
-                                        .Bindings = std::array{CubeBinding},
-                                        .Attributes = std::array{CubeAttr},
-                                        .PushConstants = std::array{CubePC},
-                                        .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST});
+    auto CubeMesh = luvk::CompileGLSLToSPIRV(CubeMeshSrc, EShLangMesh);
 
-    m_UBO->CreateBuffer(Memory,
-                        {.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, .Size = sizeof(glm::mat4) + sizeof(glm::vec4), .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+    m_Pipeline->CreateMeshPipeline(Device,
+                                   {.Extent = Extent,
+                                    .ColorFormats = Formats,
+                                    .RenderPass = Swap->GetRenderPass(),
+                                    .Subpass = 0,
+                                    .MeshShader = CubeMesh,
+                                    .FragmentShader = CubeFrag,
+                                    .SetLayouts = {},
+                                    .PushConstants = std::array{CubePC}});
 
-    m_Index = m_Registry->RegisterMesh(std::as_bytes(std::span{CubeVertices}),
-                                       std::as_bytes(std::span{CubeIndices}),
+    m_Index = m_Registry->RegisterMesh({},
+                                       std::as_bytes(std::span<std::uint16_t const>{}),
                                        VK_NULL_HANDLE,
                                        nullptr,
                                        nullptr,
                                        nullptr,
-                                       m_UBO,
+                                       nullptr,
                                        {},
                                        m_Pipeline,
                                        Device);
@@ -107,15 +125,7 @@ void luvk_example::Cube::Update(const float DeltaTime, glm::mat4 const& View, gl
     const glm::mat4 Model = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));
     const glm::mat4 Mvp = Proj * View * Model;
 
-    const glm::vec4 Color{0.5F + 0.5F * std::sin(Elapsed), 0.5F + 0.5F * std::sin(Elapsed + 2.094F), 0.5F + 0.5F * std::sin(Elapsed + 4.188F), 1.f};
-
-    struct
-    {
-        glm::mat4 Mvp;
-        glm::vec4 Color;
-    } Pc{Mvp, Color};
-
-    m_Registry->UpdateUniform(m_Index, std::as_bytes(std::span{&Pc, 1}));
+    m_Registry->UpdateUniform(m_Index, std::as_bytes(std::span{&Mvp, 1}));
 }
 
 luvk::Mesh& luvk_example::Cube::GetMesh() noexcept

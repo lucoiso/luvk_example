@@ -98,6 +98,12 @@ bool luvk_example::Application::Initialize()
     m_DeviceModule->SetPhysicalDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
     m_DeviceModule->SetSurface(Surface);
 
+    auto& DevExt = m_DeviceModule->GetExtensions();
+    if (DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
+    {
+        DevExt.SetExtensionState("", VK_EXT_MESH_SHADER_EXTENSION_NAME, true);
+    }
+
     std::unordered_map<std::uint32_t, std::uint32_t> DeviceQueueMap{};
     auto const& QueueProperties = m_DeviceModule->GetDeviceQueueFamilyProperties();
     std::uint32_t Iterator = 0U;
