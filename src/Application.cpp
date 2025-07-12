@@ -3,13 +3,10 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Application.hpp"
-
 #include <SDL2/SDL_vulkan.h>
 #include <execution>
 #include <vector>
 #include <unordered_map>
-
-#include <luvk/Libraries/ShaderCompiler.hpp>
 
 using namespace luvk_example;
 
@@ -62,8 +59,8 @@ bool luvk_example::Application::Initialize()
 
     m_Renderer->RegisterModules({m_DebugModule,
                                  m_DeviceModule,
-                                 m_SwapChainModule,
                                  m_MemoryModule,
+                                 m_SwapChainModule,
                                  m_CommandPoolModule,
                                  m_SynchronizationModule,
                                  m_MeshRegistryModule,
@@ -98,6 +95,15 @@ bool luvk_example::Application::Initialize()
     m_DeviceModule->SetPhysicalDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
     m_DeviceModule->SetSurface(Surface);
 
+    auto& DevExt = m_DeviceModule->GetExtensions();
+    if (DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
+    {
+        DevExt.SetExtensionState("", VK_EXT_MESH_SHADER_EXTENSION_NAME, true);
+    }
+
+    constexpr VkPhysicalDeviceMeshShaderFeaturesEXT MeshShaderFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
+                                                                       .meshShader = VK_TRUE};
+
     std::unordered_map<std::uint32_t, std::uint32_t> DeviceQueueMap{};
     auto const& QueueProperties = m_DeviceModule->GetDeviceQueueFamilyProperties();
     std::uint32_t Iterator = 0U;
@@ -110,15 +116,18 @@ bool luvk_example::Application::Initialize()
                       DeviceQueueMap.emplace(Iterator++, QueuePropertyIt.queueCount);
                   });
 
-    m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), nullptr);
+    m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), &MeshShaderFeatures);
+    m_MemoryModule->InitializeAllocator(m_Renderer, m_DeviceModule, 0);
 
     constexpr std::uint32_t ImageCount = 3U;
-    m_SwapChainModule->CreateSwapChain(m_DeviceModule, luvk::SwapChain::CreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}}, nullptr);
+    m_SwapChainModule->CreateSwapChain(m_DeviceModule,
+                                       m_MemoryModule,
+                                       luvk::SwapChain::CreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}},
+                                       nullptr);
 
     const auto GraphicsQueue = m_DeviceModule->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
     m_CommandPoolModule->CreateCommandPool(m_DeviceModule, GraphicsQueue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-    m_MemoryModule->InitializeAllocator(m_Renderer, m_DeviceModule, 0);
     m_MeshRegistryModule->Initialize(m_MemoryModule);
     m_ThreadPoolModule->Start(2);
 

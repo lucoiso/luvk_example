@@ -12,43 +12,76 @@ using namespace luvk_example;
 
 namespace
 {
-    constexpr auto CubeVertSrc = R"(#version 450
+    constexpr auto CubeMeshSrc = R"(#version 460
+                                    #extension GL_EXT_mesh_shader : enable
+
+                                    layout(local_size_x = 1) in;
+                                    layout(triangles, max_vertices = 8, max_primitives = 12) out;
 
                                     layout(push_constant) uniform Push
                                     {
                                         mat4 mvp;
-                                        vec4 color;
                                     } pc;
 
-                                    layout(location = 0) in vec3 inPos;
-                                    layout(location = 0) out vec4 vColor;
+                                    struct PrimData
+                                    {
+                                        vec3 color;
+                                    };
+
+                                    layout(location = 0) perprimitiveEXT out PrimData prim[];
 
                                     void main()
                                     {
-                                        gl_Position = pc.mvp * vec4(inPos, 1.0);
-                                        vColor = pc.color;
+                                        const vec3 positions[8] = vec3[8](vec3(-0.5,-0.5,-0.5),
+                                                                         vec3(0.5,-0.5,-0.5),
+                                                                         vec3(0.5,0.5,-0.5),
+                                                                         vec3(-0.5,0.5,-0.5),
+                                                                         vec3(-0.5,-0.5,0.5),
+                                                                         vec3(0.5,-0.5,0.5),
+                                                                         vec3(0.5,0.5,0.5),
+                                                                         vec3(-0.5,0.5,0.5));
+
+                                        const uint indices[36] = uint[36](0,1,2, 2,3,0,
+                                                                          4,5,6, 6,7,4,
+                                                                          0,1,5, 5,4,0,
+                                                                          2,3,7, 7,6,2,
+                                                                          1,2,6, 6,5,1,
+                                                                          3,0,4, 4,7,3);
+
+                                        const vec3 colors[6] = vec3[6](vec3(1,0,0), vec3(0,1,0), vec3(0,0,1), vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
+
+                                        SetMeshOutputsEXT(8, 12);
+
+                                        for (uint v = 0; v < 8; ++v)
+                                        {
+                                            gl_MeshVerticesEXT[v].gl_Position = pc.mvp * vec4(positions[v], 1.0);
+                                        }
+
+                                        for (uint face = 0; face < 6; ++face)
+                                        {
+                                            for (uint t = 0; t < 2; ++t)
+                                            {
+                                                uint primId = face * 2 + t;
+                                                uint base = primId * 3;
+                                                gl_PrimitiveTriangleIndicesEXT[primId] = uvec3(indices[base], indices[base + 1], indices[base + 2]);
+                                                prim[primId].color = colors[face];
+                                            }
+                                        }
                                     })";
 
-    constexpr auto CubeFragSrc = R"(#version 450
+    constexpr auto CubeFragSrc = R"(#version 460
+                                    #extension GL_EXT_mesh_shader : enable
 
-                                    layout(location = 0) in vec4 vColor;
                                     layout(location = 0) out vec4 outColor;
+                                    layout(location = 0) perprimitiveEXT in PrimData
+                                    {
+                                        vec3 color;
+                                    } prim;
 
                                     void main()
                                     {
-                                        outColor = vColor;
+                                        outColor = vec4(prim.color, 1.0);
                                     })";
-
-    constexpr std::array<glm::vec3, 8> CubeVertices{{{-0.5f, -0.5f, -0.5f},
-                                                     {0.5f, -0.5f, -0.5f},
-                                                     {0.5f, 0.5f, -0.5f},
-                                                     {-0.5f, 0.5f, -0.5f},
-                                                     {-0.5f, -0.5f, 0.5f},
-                                                     {0.5f, -0.5f, 0.5f},
-                                                     {0.5f, 0.5f, 0.5f},
-                                                     {-0.5f, 0.5f, 0.5f}}};
-
-    constexpr std::array<std::uint16_t, 36> CubeIndices{{0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4, 0, 1, 5, 5, 4, 0, 2, 3, 7, 7, 6, 2, 1, 2, 6, 6, 5, 1, 3, 0, 4, 4, 7, 3}};
 } // namespace
 
 luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
@@ -59,34 +92,33 @@ luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
       m_Pipeline(std::make_shared<luvk::Pipeline>()),
       m_UBO(std::make_shared<luvk::Buffer>())
 {
-    auto CubeVert = luvk::CompileGLSLToSPIRV(CubeVertSrc, EShLangVertex);
+    auto CubeMesh = luvk::CompileGLSLToSPIRV(CubeMeshSrc, EShLangMesh);
     auto CubeFrag = luvk::CompileGLSLToSPIRV(CubeFragSrc, EShLangFragment);
 
     const VkExtent2D Extent = Swap->GetExtent();
     const std::array Formats{Swap->m_Arguments.Format};
 
-    constexpr VkVertexInputBindingDescription CubeBinding{0, sizeof(glm::vec3), VK_VERTEX_INPUT_RATE_VERTEX};
-    constexpr VkVertexInputAttributeDescription CubeAttr{0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0};
-    constexpr VkPushConstantRange CubePC{VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(glm::mat4) + sizeof(glm::vec4)};
+    constexpr VkPushConstantRange CubePC{VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(glm::mat4)};
 
-    m_Pipeline->CreateGraphicsPipeline(Device,
-                                       {.Extent = Extent,
-                                        .ColorFormats = Formats,
-                                        .RenderPass = Swap->GetRenderPass(),
-                                        .Subpass = 0,
-                                        .VertexShader = CubeVert,
-                                        .FragmentShader = CubeFrag,
-                                        .SetLayouts = {},
-                                        .Bindings = std::array{CubeBinding},
-                                        .Attributes = std::array{CubeAttr},
-                                        .PushConstants = std::array{CubePC},
-                                        .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST});
+    m_Pipeline->CreateMeshPipeline(Device,
+                                   {.Extent = Extent,
+                                    .ColorFormats = Formats,
+                                    .RenderPass = Swap->GetRenderPass(),
+                                    .Subpass = 0,
+                                    .TaskShader = {},
+                                    .MeshShader = CubeMesh,
+                                    .FragmentShader = CubeFrag,
+                                    .SetLayouts = {},
+                                    .PushConstants = std::array{CubePC},
+                                    .CullMode = VK_CULL_MODE_NONE});
 
     m_UBO->CreateBuffer(Memory,
-                        {.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, .Size = sizeof(glm::mat4) + sizeof(glm::vec4), .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+                        {.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                         .Size = sizeof(glm::mat4),
+                         .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
-    m_Index = m_Registry->RegisterMesh(std::as_bytes(std::span{CubeVertices}),
-                                       std::as_bytes(std::span{CubeIndices}),
+    m_Index = m_Registry->RegisterMesh({},
+                                       {},
                                        VK_NULL_HANDLE,
                                        nullptr,
                                        nullptr,
@@ -107,13 +139,10 @@ void luvk_example::Cube::Update(const float DeltaTime, glm::mat4 const& View, gl
     const glm::mat4 Model = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));
     const glm::mat4 Mvp = Proj * View * Model;
 
-    const glm::vec4 Color{0.5F + 0.5F * std::sin(Elapsed), 0.5F + 0.5F * std::sin(Elapsed + 2.094F), 0.5F + 0.5F * std::sin(Elapsed + 4.188F), 1.f};
-
     struct
     {
         glm::mat4 Mvp;
-        glm::vec4 Color;
-    } Pc{Mvp, Color};
+    } Pc{Mvp};
 
     m_Registry->UpdateUniform(m_Index, std::as_bytes(std::span{&Pc, 1}));
 }
