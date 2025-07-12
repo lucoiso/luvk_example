@@ -15,15 +15,14 @@ namespace luvk_example
 {
     class InputManager
     {
-        SDL_Window* m_Window{};
         bool m_Running{true};
         bool m_LeftHeld{false};
         std::unordered_map<Uint32, std::vector<std::function<void(SDL_Event const&)>>> m_Bindings{};
         std::unordered_set<SDL_Keycode> m_PressedKeys{};
 
     public:
-        InputManager(std::uint32_t Width, std::uint32_t Height);
-        ~InputManager();
+        InputManager();
+        ~InputManager() = default;
 
         void BindEvent(Uint32 Type, std::function<void(SDL_Event const&)> const& Callback);
         void ProcessEvents();
@@ -31,6 +30,5 @@ namespace luvk_example
         [[nodiscard]] bool Running() const noexcept;
         [[nodiscard]] bool IsKeyPressed(SDL_Keycode key) const noexcept;
         [[nodiscard]] bool LeftHeld() const noexcept;
-        [[nodiscard]] SDL_Window* GetWindow() const noexcept;
     };
 } // namespace luvk_example

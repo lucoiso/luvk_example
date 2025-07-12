@@ -8,18 +8,24 @@
 #include <glm/glm.hpp>
 #include <luvk/Core/MeshRegistry.hpp>
 #include <luvk/Types/Mesh.hpp>
+#include <luvk/Core/Pipeline.hpp>
+#include <luvk/Core/Device.hpp>
+#include <luvk/Core/SwapChain.hpp>
 
 namespace luvk_example
 {
     class Triangle
     {
         std::shared_ptr<luvk::MeshRegistry> m_Registry{};
+        std::shared_ptr<luvk::Pipeline> m_Pipeline{};
         std::size_t m_Index{};
         luvk::Mesh m_Mesh{};
         std::vector<luvk::MeshRegistry::InstanceInfo> m_Instances{};
 
     public:
-        Triangle(std::shared_ptr<luvk::MeshRegistry> Registry, std::size_t Index);
+        Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
+                 std::shared_ptr<luvk::Device> Device,
+                 std::shared_ptr<luvk::SwapChain> Swap);
         void AddInstance(glm::vec2 Position);
         [[nodiscard]] luvk::Mesh& GetMesh() noexcept;
     };
