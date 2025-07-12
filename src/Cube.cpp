@@ -28,7 +28,7 @@ namespace
                                         vec3 color;
                                     };
 
-                                    perprimitiveEXT out PrimData prim[];
+                                    layout(location = 0) perprimitiveEXT out PrimData prim[];
 
                                     void main()
                                     {
@@ -73,7 +73,7 @@ namespace
                                     #extension GL_EXT_mesh_shader : enable
 
                                     layout(location = 0) out vec4 outColor;
-                                    perprimitiveEXT in PrimData
+                                    layout(location = 0) perprimitiveEXT in PrimData
                                     {
                                         vec3 color;
                                     } prim;
@@ -82,7 +82,6 @@ namespace
                                     {
                                         outColor = vec4(prim.color, 1.0);
                                     })";
-
 } // namespace
 
 luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
@@ -118,7 +117,8 @@ luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
                          .Size = sizeof(glm::mat4),
                          .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
-    m_Index = m_Registry->RegisterMesh({},{},
+    m_Index = m_Registry->RegisterMesh({},
+                                       {},
                                        VK_NULL_HANDLE,
                                        nullptr,
                                        nullptr,

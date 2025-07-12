@@ -20,12 +20,14 @@ namespace luvk_example
 {
     class Triangle
     {
-        struct Particle
+        struct alignas(16) Particle
         {
             glm::vec2 Offset{};
             float Angle{0.F};
+            float _pad1;
             glm::vec4 Color{1.F, 1.F, 1.F, 1.F};
             glm::vec2 Velocity{};
+            glm::vec2 _pad2;
         };
 
         std::shared_ptr<luvk::MeshRegistry> m_Registry{};

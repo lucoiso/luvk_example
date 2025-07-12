@@ -67,7 +67,8 @@ int main()
         Input.BindEvent(SDL_WINDOWEVENT,
                         [&](SDL_Event const& Event)
                         {
-                            if (Event.window.event == SDL_WINDOWEVENT_RESIZED || Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
+                            if (Event.window.event == SDL_WINDOWEVENT_RESIZED ||
+                                Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
                                 Event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
                             {
                                 Renderer->SetPaused(true);

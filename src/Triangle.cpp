@@ -7,6 +7,7 @@
 #include <glm/gtc/constants.hpp>
 #include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
+#include <luvk/Types/Material.hpp>
 
 using namespace luvk_example;
 
@@ -15,29 +16,19 @@ namespace
     constexpr auto TriVertSrc = R"(#version 450
 
                                    layout(location = 0) in vec2 inPos;
-
-                                   struct Particle
-                                   {
-                                       vec2 offset;
-                                       float angle;
-                                       vec4 color;
-                                       vec2 velocity;
-                                   };
-
-                                   layout(std430, binding = 0) readonly buffer PartData
-                                   {
-                                       Particle particles[];
-                                   };
+                                   layout(location = 1) in vec2 offset;
+                                   layout(location = 2) in float angle;
+                                   layout(location = 3) in vec4 color;
 
                                    layout(location = 0) out vec4 vColor;
 
                                    void main()
                                    {
-                                       Particle p = particles[gl_InstanceIndex];
-                                       mat2 R = mat2(cos(p.angle), -sin(p.angle), sin(p.angle), cos(p.angle));
-                                       vec2 pos = R * inPos + p.offset;
+                                       mat2 R = mat2(cos(angle), -sin(angle),
+                                                     sin(angle),  cos(angle));
+                                       vec2 pos = R * inPos + offset;
                                        gl_Position = vec4(pos, 0.0, 1.0);
-                                       vColor = p.color;
+                                       vColor = color;
                                    })";
 
     constexpr auto TriFragSrc = R"(#version 450
@@ -52,34 +43,31 @@ namespace
 
     constexpr auto TriCompSrc = R"(#version 450
 
-                                 layout(local_size_x = 64) in;
+                                   layout(local_size_x = 64) in;
 
-                                 struct Particle
-                                 {
-                                     vec2 offset;
-                                     float angle;
-                                     vec4 color;
-                                     vec2 velocity;
-                                 };
+                                   struct Particle
+                                   {
+                                       vec2 offset;
+                                       float angle;
+                                       vec4 color;
+                                       vec2 velocity;
+                                   };
 
-                                 layout(std430, binding = 0) buffer PartData
-                                 {
-                                     Particle particles[];
-                                 };
+                                   layout(std430, binding = 0) buffer PartData
+                                   {
+                                       Particle particles[];
+                                   };
 
-                                 layout(push_constant) uniform PC
-                                 {
-                                     float dt;
-                                 } pc;
+                                   layout(push_constant) uniform PC
+                                   {
+                                       float dt;
+                                   } pc;
 
-                                 void main()
-                                 {
-                                     uint id = gl_GlobalInvocationID.x;
-                                     Particle p = particles[id];
-                                     p.velocity.y -= 9.81 * pc.dt;
-                                     p.offset += p.velocity * pc.dt;
-                                     particles[id] = p;
-                                 })";
+                                   void main()
+                                   {
+                                       uint id = gl_GlobalInvocationID.x;
+                                       particles[id].angle += pc.dt * 2.0;
+                                   })";
 
     constexpr std::array<glm::vec2, 3> TriVertices{{{-0.05f, -0.05f},
                                                     {0.05f, -0.05f},
@@ -116,9 +104,10 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                               VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(Particle, Angle)},
                               VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, Color)}};
 
-    VkDescriptorSetLayoutBinding PartBinding{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
+    constexpr VkDescriptorSetLayoutBinding PartBinding{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
+    constexpr VkDescriptorPoolSize PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
+
     m_DescriptorSet->CreateLayout(Device, {.Bindings = std::array{PartBinding}});
-    VkDescriptorPoolSize PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
     m_DescriptorPool->CreateDescriptorPool(Device, 1, std::array{PoolSize});
     m_DescriptorSet->Allocate(Device, m_DescriptorPool);
 
@@ -141,9 +130,10 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                                               .SetLayouts = std::array{m_DescriptorSet->GetLayout()},
                                               .PushConstants = std::array{CompPC}});
 
-    m_ParticleBuffer->CreateBuffer(Memory, {.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                            .Size = sizeof(Particle),
-                                            .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+    m_ParticleBuffer->CreateBuffer(Memory,
+                                   {.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                    .Size = sizeof(Particle),
+                                    .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
     m_ComputeUBO->CreateBuffer(Memory,
                                {.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -179,7 +169,7 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
     gfxEntry.InstanceBuffer = m_ParticleBuffer;
     gfxEntry.MaterialPtr->SetDescriptor(m_DescriptorSet);
 
-    auto& compEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_ComputeIndex]);
+    const auto& compEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_ComputeIndex]);
     compEntry.MaterialPtr->SetDescriptor(m_DescriptorSet);
 
     m_Mesh = luvk::Mesh(m_Registry, m_GraphicsIndex);
@@ -195,32 +185,35 @@ void luvk_example::Triangle::AddInstance(const glm::vec2 Position)
     static std::mt19937 Generator{std::random_device{}()};
     static std::uniform_real_distribution Distribution(0.F, 1.F);
 
-    Particle P{};
-    P.Offset = Position;
-    P.Angle = Distribution(Generator) * glm::two_pi<float>();
-    P.Color = {Distribution(Generator), Distribution(Generator), Distribution(Generator), 1.F};
-    P.Velocity = {0.F, 0.F};
+    Particle NewParticle{};
+    NewParticle.Offset = Position;
+    NewParticle.Angle = Distribution(Generator) * glm::two_pi<float>();
+    NewParticle.Color = {Distribution(Generator), Distribution(Generator), Distribution(Generator), 1.F};
+    NewParticle.Velocity = {0.F, 0.F};
 
-    m_Particles.push_back(P);
+    m_Particles.push_back(NewParticle);
 
-    VkDeviceSize Required = sizeof(Particle) * m_Particles.size();
-    if (Required > m_ParticleBuffer->GetSize())
+    auto& GraphicsEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_GraphicsIndex]);
+    auto& ComputeEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_ComputeIndex]);
+
+    const std::size_t ParticlesSize = std::size(m_Particles);
+
+    if (const VkDeviceSize Required = sizeof(Particle) * ParticlesSize;
+        Required > m_ParticleBuffer->GetSize())
     {
         m_ParticleBuffer->RecreateBuffer({.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                           .Size = Required,
                                           .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+
         m_DescriptorSet->UpdateBuffer(m_Device, m_ParticleBuffer->GetHandle(), m_ParticleBuffer->GetSize(), 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-        auto& gfxEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_GraphicsIndex]);
-        gfxEntry.InstanceBuffer = m_ParticleBuffer;
+
+        GraphicsEntry.InstanceBuffer = m_ParticleBuffer;
     }
 
     m_ParticleBuffer->Upload(std::as_bytes(std::span{m_Particles}));
 
-    auto& gfxEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_GraphicsIndex]);
-    gfxEntry.InstanceCount = static_cast<std::uint32_t>(m_Particles.size());
-
-    auto& compEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_ComputeIndex]);
-    compEntry.DispatchX = static_cast<std::uint32_t>((m_Particles.size() + 63) / 64);
+    GraphicsEntry.InstanceCount = static_cast<std::uint32_t>(ParticlesSize);
+    ComputeEntry.DispatchX = static_cast<std::uint32_t>((ParticlesSize + 63) / 64);
 }
 
 luvk::Mesh& luvk_example::Triangle::GetMesh() noexcept
