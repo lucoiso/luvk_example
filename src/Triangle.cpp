@@ -175,7 +175,7 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
     m_Mesh = luvk::Mesh(m_Registry, m_GraphicsIndex);
 }
 
-void luvk_example::Triangle::Update(const float DeltaTime)
+void luvk_example::Triangle::Update(const float DeltaTime) const
 {
     m_Registry->UpdateUniform(m_ComputeIndex, std::as_bytes(std::span{&DeltaTime, 1}));
 }
