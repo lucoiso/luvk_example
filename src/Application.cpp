@@ -132,7 +132,7 @@ bool luvk_example::Application::Initialize()
     m_ThreadPoolModule->Start(2);
 
     m_SynchronizationModule->Initialize(m_DeviceModule, ImageCount);
-    m_SynchronizationModule->SetupFrames(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule, m_ThreadPoolModule);
+    m_SynchronizationModule->SetupFrames(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule);
 
     return true;
 }

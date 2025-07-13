@@ -65,7 +65,7 @@ int main()
                                            }),
                                            luvk::RendererEvents::OnRenderLoopInitialized);
 
-        Renderer->InitializeRenderLoop(DeviceModule, SwapChainModule, CommandPoolModule, MeshRegistryModule, ThreadPoolModule);
+        Renderer->InitializeRenderLoop();
 
         luvk::InitializeGlslang();
 
