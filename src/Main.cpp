@@ -20,6 +20,7 @@
 #include "luvk_example/Cube.hpp"
 #include "luvk_example/Pixel.hpp"
 #include "luvk_example/Triangle.hpp"
+#include "luvk_example/ImGuiLayer.hpp"
 
 #include <luvk/Libraries/ShaderCompiler.hpp>
 
@@ -47,6 +48,9 @@ int main()
         auto MemoryModule = App.GetMemory();
         auto MeshRegistryModule = App.GetMeshRegistry();
         auto ThreadPoolModule = App.GetThreadPool();
+
+        ImGuiLayer GuiLayer;
+        GuiLayer.Init(App);
 
         Cube CubeMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
@@ -145,6 +149,7 @@ int main()
             CubeMesh.Update(DeltaTime, AppCamera.GetViewMatrix(), Proj);
             TriangleMesh.Update(DeltaTime);
 
+            GuiLayer.Render();
             Renderer->DrawFrame();
 
             ++Frames;
@@ -162,6 +167,7 @@ int main()
         }
 
         luvk::FinalizeGlslang();
+        GuiLayer.Shutdown();
 
         return EXIT_SUCCESS;
     }
@@ -172,3 +178,4 @@ int main()
 
     return EXIT_FAILURE;
 }
+
