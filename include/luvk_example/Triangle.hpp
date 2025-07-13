@@ -48,7 +48,7 @@ namespace luvk_example
                  const std::shared_ptr<luvk::Device>& Device,
                  const std::shared_ptr<luvk::SwapChain>& Swap,
                  const std::shared_ptr<luvk::Memory>& Memory);
-        void Update(float DeltaTime);
+        void Update(float DeltaTime) const;
         void AddInstance(glm::vec2 Position);
         [[nodiscard]] luvk::Mesh& GetMesh() noexcept;
     };

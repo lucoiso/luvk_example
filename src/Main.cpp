@@ -20,6 +20,7 @@
 #include "luvk_example/Cube.hpp"
 #include "luvk_example/Pixel.hpp"
 #include "luvk_example/Triangle.hpp"
+#include "luvk_example/ImGuiLayer.hpp"
 
 #include <luvk/Libraries/ShaderCompiler.hpp>
 
@@ -52,12 +53,13 @@ int main()
         Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Pixel PixelMesh{MeshRegistryModule, DeviceModule, SwapChainModule};
 
-        Renderer->InitializeRenderLoop(DeviceModule, SwapChainModule, CommandPoolModule, MeshRegistryModule, ThreadPoolModule);
         Renderer->GetEventSystem().AddNode(luvk::EventNode::NewNode([]
                                            {
                                                SDL_Log("Render loop initialized");
                                            }),
                                            luvk::RendererEvents::OnRenderLoopInitialized);
+
+        Renderer->InitializeRenderLoop(DeviceModule, SwapChainModule, CommandPoolModule, MeshRegistryModule, ThreadPoolModule);
 
         luvk::InitializeGlslang();
 
@@ -96,7 +98,8 @@ int main()
                             {
                                 int W = 0, H = 0;
                                 SDL_Vulkan_GetDrawableSize(Window, &W, &H);
-                                const glm::vec2 Position{2.F * Event.button.x / static_cast<float>(W) - 1.F, 2.F * Event.button.y / static_cast<float>(H) - 1.F};
+                                const glm::vec2 Position{2.F * static_cast<float>(Event.button.x) / static_cast<float>(W) - 1.F,
+                                                         2.F * static_cast<float>(Event.button.y) / static_cast<float>(H) - 1.F};
                                 TriangleMesh.AddInstance(Position);
                             }
                         });
@@ -108,7 +111,8 @@ int main()
                             {
                                 int W = 0, H = 0;
                                 SDL_Vulkan_GetDrawableSize(Window, &W, &H);
-                                const glm::vec2 Position{2.F * Event.motion.x / static_cast<float>(W) - 1.F, 2.F * Event.motion.y / static_cast<float>(H) - 1.F};
+                                const glm::vec2 Position{2.F * static_cast<float>(Event.motion.x) / static_cast<float>(W) - 1.F,
+                                                         2.F * static_cast<float>(Event.motion.y) / static_cast<float>(H) - 1.F};
                                 PixelMesh.AddInstance(Position);
                             }
                         });
