@@ -42,6 +42,7 @@ int main()
 
         auto& Input = App.GetInput();
         SDL_Window* const Window = App.GetWindow();
+
         auto Renderer = App.GetRenderer();
         auto DeviceModule = App.GetDevice();
         auto SwapChainModule = App.GetSwapChain();
@@ -49,6 +50,7 @@ int main()
         auto MemoryModule = App.GetMemory();
         auto MeshRegistryModule = App.GetMeshRegistry();
         auto ThreadPoolModule = App.GetThreadPool();
+
         ImGuiLayer GuiLayer;
         if (!GuiLayer.Initialize(Window, Renderer))
         {
@@ -191,9 +193,10 @@ int main()
             ImGui::Text("FPS: %.0f", FpsValue);
             ImGui::End();
 
-            Renderer->EnqueueCommand([&GuiLayer](VkCommandBuffer Cmd)
-                                       { GuiLayer.Render(Cmd); });
-
+            Renderer->EnqueueCommand([MemoryModule, &GuiLayer](const VkCommandBuffer& Cmd)
+            {
+                GuiLayer.Render(MemoryModule, Cmd);
+            });
             Renderer->DrawFrame();
 
             ++Frames;

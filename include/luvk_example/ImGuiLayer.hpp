@@ -24,7 +24,7 @@ namespace luvk_example
         bool Initialize(SDL_Window* Window, std::shared_ptr<luvk::Renderer> const& Renderer);
         void Shutdown();
         void NewFrame(float DeltaTime) const;
-        void Render(VkCommandBuffer Cmd) const;
+        void Render(std::shared_ptr<luvk::Memory> const& Memory, const VkCommandBuffer& Cmd);
         bool ProcessEvent(SDL_Event const& Event) const;
     };
 } // namespace luvk_example

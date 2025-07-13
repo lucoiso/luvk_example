@@ -10,22 +10,17 @@ using namespace luvk_example;
 bool ImGuiLayer::Initialize(SDL_Window* Window, std::shared_ptr<luvk::Renderer> const& Renderer)
 {
     IMGUI_CHECKVERSION();
+
     ImGui::CreateContext();
-    if (!m_SdlBackend.Init(Window))
-    {
-        return false;
-    }
-    if (!m_VkBackend.Init(Renderer))
-    {
-        return false;
-    }
-    return true;
+
+    return m_SdlBackend.Init(Window) && m_VkBackend.Init(Renderer);
 }
 
 void ImGuiLayer::Shutdown()
 {
     m_VkBackend.Shutdown();
     m_SdlBackend.Shutdown();
+
     ImGui::DestroyContext();
 }
 
@@ -37,9 +32,9 @@ void ImGuiLayer::NewFrame(float DeltaTime) const
     m_VkBackend.NewFrame();
 }
 
-void ImGuiLayer::Render(VkCommandBuffer Cmd) const
+void ImGuiLayer::Render(std::shared_ptr<luvk::Memory> const& Memory, const VkCommandBuffer& Cmd)
 {
-    m_VkBackend.Render(Cmd);
+    m_VkBackend.Render(Memory, Cmd);
 }
 
 bool ImGuiLayer::ProcessEvent(SDL_Event const& Event) const

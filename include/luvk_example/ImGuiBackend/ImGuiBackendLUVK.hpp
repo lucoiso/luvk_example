@@ -6,8 +6,6 @@
 
 #include <memory>
 #include <luvk/Core/Renderer.hpp>
-#include <luvk/Core/Device.hpp>
-#include <luvk/Core/CommandPool.hpp>
 #include <luvk/Core/Memory.hpp>
 #include <luvk/Core/Image.hpp>
 #include <luvk/Core/Sampler.hpp>
@@ -15,17 +13,11 @@
 #include <luvk/Core/DescriptorSet.hpp>
 #include <luvk/Core/Pipeline.hpp>
 #include <luvk/Core/Buffer.hpp>
-#include <luvk/Core/SwapChain.hpp>
-
 
 namespace luvk_example
 {
     class ImGuiBackendLUVK
     {
-        std::shared_ptr<luvk::Renderer> m_Renderer{};
-        std::shared_ptr<luvk::Device> m_Device{};
-        std::shared_ptr<luvk::CommandPool> m_CommandPool{};
-        std::shared_ptr<luvk::Memory> m_Memory{};
         std::shared_ptr<luvk::DescriptorPool> m_DescPool{};
         std::shared_ptr<luvk::DescriptorSet> m_FontSet{};
         std::shared_ptr<luvk::Image> m_FontImage{};
@@ -42,6 +34,6 @@ namespace luvk_example
         bool Init(std::shared_ptr<luvk::Renderer> const& Renderer);
         void Shutdown();
         void NewFrame() const;
-        void Render(VkCommandBuffer Cmd) const;
+        void Render(std::shared_ptr<luvk::Memory> const& Memory, const VkCommandBuffer& Cmd);
     };
 } // namespace luvk_example
