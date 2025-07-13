@@ -104,9 +104,9 @@ bool ImGuiBackendLUVK::Init(std::shared_ptr<luvk::Renderer> const& Renderer)
     m_FontSet->CreateLayout(m_Device, {.Bindings = std::array{Binding}});
     m_FontSet->Allocate(m_Device, m_DescPool, m_Memory);
 
-    ImGui::CreateContext();
     ImGuiIO& IO = ImGui::GetIO();
     IO.BackendRendererName = "ImGuiBackendLUVK";
+    IO.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
     unsigned char* Pixels;
     int Width, Height;
@@ -158,7 +158,6 @@ bool ImGuiBackendLUVK::Init(std::shared_ptr<luvk::Renderer> const& Renderer)
 
 void ImGuiBackendLUVK::Shutdown()
 {
-    ImGui::DestroyContext();
     if (m_DescPool)
     {
         m_DescPool->ClearResources();

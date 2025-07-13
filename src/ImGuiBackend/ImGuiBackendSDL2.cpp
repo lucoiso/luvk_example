@@ -15,7 +15,6 @@ static void UpdateModifiers(SDL_Keymod Mods);
 bool ImGuiBackendSDL2::Init(SDL_Window* Window)
 {
     m_Window = Window;
-    ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.BackendPlatformName = "ImGuiBackendSDL2";
     return true;
@@ -23,7 +22,6 @@ bool ImGuiBackendSDL2::Init(SDL_Window* Window)
 
 void ImGuiBackendSDL2::Shutdown()
 {
-    ImGui::DestroyContext();
     m_Window = nullptr;
 }
 
@@ -36,7 +34,6 @@ void ImGuiBackendSDL2::NewFrame() const
     io.DisplaySize = ImVec2((float)w, (float)h);
     if (w > 0 && h > 0)
         io.DisplayFramebufferScale = ImVec2((float)dw / w, (float)dh / h);
-    io.DeltaTime = io.DeltaTime > 0.0f ? io.DeltaTime : (1.0f / 60.0f);
 }
 
 bool ImGuiBackendSDL2::ProcessEvent(SDL_Event const& Event) const
