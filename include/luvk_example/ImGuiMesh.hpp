@@ -45,4 +45,3 @@ namespace luvk_example
         [[nodiscard]] luvk::Mesh& GetMesh() noexcept;
     };
 } // namespace luvk_example
-

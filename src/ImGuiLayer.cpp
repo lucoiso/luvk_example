@@ -18,9 +18,9 @@ bool ImGuiLayer::Initialize(SDL_Window* Window,
 
     ImGui::CreateContext();
 
-    bool ok = m_SdlBackend.Init(Window);
+    const bool IsOk = m_SdlBackend.Init(Window);
     m_Mesh = std::make_unique<ImGuiMesh>(Registry, Device, Swap, Memory);
-    return ok && static_cast<bool>(m_Mesh);
+    return IsOk && static_cast<bool>(m_Mesh);
 }
 
 void ImGuiLayer::Shutdown()
@@ -31,7 +31,7 @@ void ImGuiLayer::Shutdown()
     ImGui::DestroyContext();
 }
 
-void ImGuiLayer::NewFrame(float DeltaTime) const
+void ImGuiLayer::NewFrame(const float DeltaTime) const
 {
     ImGuiIO& IO = ImGui::GetIO();
     IO.DeltaTime = DeltaTime;
