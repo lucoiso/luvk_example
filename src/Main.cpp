@@ -21,6 +21,7 @@
 #include "luvk_example/Pixel.hpp"
 #include "luvk_example/Triangle.hpp"
 #include "luvk_example/ImGuiLayer.hpp"
+#include <imgui.h>
 
 #include <luvk/Libraries/ShaderCompiler.hpp>
 
@@ -41,6 +42,7 @@ int main()
 
         auto& Input = App.GetInput();
         SDL_Window* const Window = App.GetWindow();
+
         auto Renderer = App.GetRenderer();
         auto DeviceModule = App.GetDevice();
         auto SwapChainModule = App.GetSwapChain();
@@ -48,6 +50,17 @@ int main()
         auto MemoryModule = App.GetMemory();
         auto MeshRegistryModule = App.GetMeshRegistry();
         auto ThreadPoolModule = App.GetThreadPool();
+
+        ImGuiLayer GuiLayer;
+        if (!GuiLayer.Initialize(Window,
+                                 Renderer,
+                                 MeshRegistryModule,
+                                 DeviceModule,
+                                 SwapChainModule,
+                                 MemoryModule))
+        {
+            return EXIT_FAILURE;
+        }
 
         Cube CubeMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
@@ -59,7 +72,7 @@ int main()
                                            }),
                                            luvk::RendererEvents::OnRenderLoopInitialized);
 
-        Renderer->InitializeRenderLoop(DeviceModule, SwapChainModule, CommandPoolModule, MeshRegistryModule, ThreadPoolModule);
+        Renderer->InitializeRenderLoop();
 
         luvk::InitializeGlslang();
 
@@ -69,6 +82,7 @@ int main()
         Input.BindEvent(SDL_WINDOWEVENT,
                         [&](SDL_Event const& Event)
                         {
+                            GuiLayer.ProcessEvent(Event);
                             if (Event.window.event == SDL_WINDOWEVENT_RESIZED ||
                                 Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
                                 Event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
@@ -102,6 +116,7 @@ int main()
                                                          2.F * static_cast<float>(Event.button.y) / static_cast<float>(H) - 1.F};
                                 TriangleMesh.AddInstance(Position);
                             }
+                            GuiLayer.ProcessEvent(Event);
                         });
 
         Input.BindEvent(SDL_MOUSEMOTION,
@@ -115,11 +130,39 @@ int main()
                                                          2.F * static_cast<float>(Event.motion.y) / static_cast<float>(H) - 1.F};
                                 PixelMesh.AddInstance(Position);
                             }
+                            GuiLayer.ProcessEvent(Event);
+                        });
+
+        Input.BindEvent(SDL_MOUSEWHEEL,
+                        [&](SDL_Event const& Event)
+                        {
+                            GuiLayer.ProcessEvent(Event);
+                        });
+        Input.BindEvent(SDL_MOUSEBUTTONUP,
+                        [&](SDL_Event const& Event)
+                        {
+                            GuiLayer.ProcessEvent(Event);
+                        });
+        Input.BindEvent(SDL_TEXTINPUT,
+                        [&](SDL_Event const& Event)
+                        {
+                            GuiLayer.ProcessEvent(Event);
+                        });
+        Input.BindEvent(SDL_KEYDOWN,
+                        [&](SDL_Event const& Event)
+                        {
+                            GuiLayer.ProcessEvent(Event);
+                        });
+        Input.BindEvent(SDL_KEYUP,
+                        [&](SDL_Event const& Event)
+                        {
+                            GuiLayer.ProcessEvent(Event);
                         });
 
         auto LastTime = std::chrono::high_resolution_clock::now();
         int Frames = 0;
         auto FpsTime = LastTime;
+        float FpsValue = 0.F;
 
         while (Input.Running())
         {
@@ -144,11 +187,21 @@ int main()
 
             AppCamera.Update(DeltaTime, Input);
 
+            GuiLayer.NewFrame(DeltaTime);
+
             glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(CurrentWidth) / static_cast<float>(CurrentHeight), 0.1F, 10.F);
             Proj[1][1] *= -1.F;
             CubeMesh.Update(DeltaTime, AppCamera.GetViewMatrix(), Proj);
             TriangleMesh.Update(DeltaTime);
 
+            ImGui::Begin("Stats");
+            ImGui::Text("FPS: %.0f", FpsValue);
+            ImGui::End();
+
+            Renderer->EnqueueCommand([&GuiLayer](const VkCommandBuffer& Cmd)
+            {
+                GuiLayer.Render(Cmd);
+            });
             Renderer->DrawFrame();
 
             ++Frames;
@@ -158,6 +211,7 @@ int main()
                 std::array<char, 64> Title{};
                 std::snprintf(Title.data(), Title.size(), "LuVK Example - %.0f FPS", Fps);
                 SDL_SetWindowTitle(Window, Title.data());
+                FpsValue = Fps;
                 FpsTime = CurrentTime;
                 Frames = 0;
             }
@@ -165,6 +219,7 @@ int main()
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
 
+        GuiLayer.Shutdown();
         luvk::FinalizeGlslang();
 
         return EXIT_SUCCESS;
