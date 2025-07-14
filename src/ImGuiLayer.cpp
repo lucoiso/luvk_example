@@ -7,34 +7,47 @@
 
 using namespace luvk_example;
 
-bool ImGuiLayer::Initialize(SDL_Window* Window, std::shared_ptr<luvk::Renderer> const& Renderer)
+bool ImGuiLayer::Initialize(SDL_Window* Window,
+                            std::shared_ptr<luvk::Renderer> const& /*Renderer*/,
+                            std::shared_ptr<luvk::MeshRegistry> const& Registry,
+                            std::shared_ptr<luvk::Device> const& Device,
+                            std::shared_ptr<luvk::SwapChain> const& Swap,
+                            std::shared_ptr<luvk::Memory> const& Memory)
 {
     IMGUI_CHECKVERSION();
 
     ImGui::CreateContext();
 
-    return m_SdlBackend.Init(Window) && m_VkBackend.Init(Renderer);
+    const bool IsOk = m_SdlBackend.Init(Window);
+    m_Mesh = std::make_unique<ImGuiMesh>(Registry, Device, Swap, Memory);
+    return IsOk && static_cast<bool>(m_Mesh);
 }
 
 void ImGuiLayer::Shutdown()
 {
-    m_VkBackend.Shutdown();
+    m_Mesh.reset();
     m_SdlBackend.Shutdown();
 
     ImGui::DestroyContext();
 }
 
-void ImGuiLayer::NewFrame(float DeltaTime) const
+void ImGuiLayer::NewFrame(const float DeltaTime) const
 {
     ImGuiIO& IO = ImGui::GetIO();
     IO.DeltaTime = DeltaTime;
     m_SdlBackend.NewFrame();
-    m_VkBackend.NewFrame();
+    if (m_Mesh)
+    {
+        m_Mesh->NewFrame();
+    }
 }
 
-void ImGuiLayer::Render(std::shared_ptr<luvk::Memory> const& Memory, const VkCommandBuffer& Cmd)
+void ImGuiLayer::Render(const VkCommandBuffer& Cmd)
 {
-    m_VkBackend.Render(Memory, Cmd);
+    if (m_Mesh)
+    {
+        m_Mesh->Render(Cmd);
+    }
 }
 
 bool ImGuiLayer::ProcessEvent(SDL_Event const& Event) const

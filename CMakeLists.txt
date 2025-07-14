@@ -51,7 +51,7 @@ SET(SOURCE_FILES
     "${LUVK_EXAMPLE_SOURCE_BASE_DIRECTORY}/Pixel.cpp"
     "${LUVK_EXAMPLE_SOURCE_BASE_DIRECTORY}/Triangle.cpp"
     "${LUVK_EXAMPLE_SOURCE_BASE_DIRECTORY}/ImGuiLayer.cpp"
-    "${LUVK_EXAMPLE_SOURCE_BASE_DIRECTORY}/ImGuiBackend/ImGuiBackendLUVK.cpp"
+    "${LUVK_EXAMPLE_SOURCE_BASE_DIRECTORY}/ImGuiMesh.cpp"
     "${LUVK_EXAMPLE_SOURCE_BASE_DIRECTORY}/ImGuiBackend/ImGuiBackendSDL2.cpp"
 )
 
@@ -64,7 +64,7 @@ SET(INCLUDE_FILES
     "${LUVK_EXAMPLE_INCLUDE_BASE_DIRECTORY}/luvk_example/Pixel.hpp"
     "${LUVK_EXAMPLE_INCLUDE_BASE_DIRECTORY}/luvk_example/Triangle.hpp"
     "${LUVK_EXAMPLE_INCLUDE_BASE_DIRECTORY}/luvk_example/ImGuiLayer.hpp"
-    "${LUVK_EXAMPLE_INCLUDE_BASE_DIRECTORY}/luvk_example/ImGuiBackend/ImGuiBackendLUVK.hpp"
+    "${LUVK_EXAMPLE_INCLUDE_BASE_DIRECTORY}/luvk_example/ImGuiMesh.hpp"
     "${LUVK_EXAMPLE_INCLUDE_BASE_DIRECTORY}/luvk_example/ImGuiBackend/ImGuiBackendSDL2.hpp"
 )
 

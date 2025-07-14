@@ -15,8 +15,9 @@ static void UpdateModifiers(SDL_Keymod Mods);
 bool ImGuiBackendSDL2::Init(SDL_Window* Window)
 {
     m_Window = Window;
-    ImGuiIO& io = ImGui::GetIO();
-    io.BackendPlatformName = "ImGuiBackendSDL2";
+    ImGuiIO& GuiIO = ImGui::GetIO();
+    GuiIO.BackendPlatformName = "ImGuiBackendSDL2";
+
     return true;
 }
 
@@ -27,50 +28,77 @@ void ImGuiBackendSDL2::Shutdown()
 
 void ImGuiBackendSDL2::NewFrame() const
 {
-    ImGuiIO& io = ImGui::GetIO();
-    int w, h, dw, dh;
-    SDL_GetWindowSize(m_Window, &w, &h);
-    SDL_Vulkan_GetDrawableSize(m_Window, &dw, &dh);
-    io.DisplaySize = ImVec2((float)w, (float)h);
-    if (w > 0 && h > 0)
-        io.DisplayFramebufferScale = ImVec2((float)dw / w, (float)dh / h);
+    ImGuiIO& GuiIO = ImGui::GetIO();
+
+    int Width = 0;
+    int Height = 0;
+    SDL_GetWindowSize(m_Window, &Width, &Height);
+
+    int DrawWidth = 0;
+    int DrawHeight = 0;
+    SDL_Vulkan_GetDrawableSize(m_Window, &DrawWidth, &DrawHeight);
+    GuiIO.DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
+
+    if (Width > 0 && Height > 0)
+    {
+        GuiIO.DisplayFramebufferScale = ImVec2(static_cast<float>(DrawWidth) / Width, static_cast<float>(DrawHeight) / Height);
+    }
 }
 
 bool ImGuiBackendSDL2::ProcessEvent(SDL_Event const& Event) const
 {
-    ImGuiIO& io = ImGui::GetIO();
+    ImGuiIO& GuiIO = ImGui::GetIO();
+
     switch (Event.type)
     {
     case SDL_MOUSEWHEEL:
-        io.AddMouseWheelEvent((float)Event.wheel.x, (float)Event.wheel.y);
-        return true;
+        {
+            GuiIO.AddMouseWheelEvent(static_cast<float>(Event.wheel.x), static_cast<float>(Event.wheel.y));
+            return true;
+        }
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:
-        if (Event.button.button == SDL_BUTTON_LEFT) io.AddMouseButtonEvent(0, Event.type == SDL_MOUSEBUTTONDOWN);
-        if (Event.button.button == SDL_BUTTON_RIGHT) io.AddMouseButtonEvent(1, Event.type == SDL_MOUSEBUTTONDOWN);
-        if (Event.button.button == SDL_BUTTON_MIDDLE) io.AddMouseButtonEvent(2, Event.type == SDL_MOUSEBUTTONDOWN);
-        return true;
+        {
+            if (Event.button.button == SDL_BUTTON_LEFT)
+            {
+                GuiIO.AddMouseButtonEvent(0, Event.type == SDL_MOUSEBUTTONDOWN);
+            }
+            else if (Event.button.button == SDL_BUTTON_RIGHT)
+            {
+                GuiIO.AddMouseButtonEvent(1, Event.type == SDL_MOUSEBUTTONDOWN);
+            }
+            else if (Event.button.button == SDL_BUTTON_MIDDLE)
+            {
+                GuiIO.AddMouseButtonEvent(2, Event.type == SDL_MOUSEBUTTONDOWN);
+            }
+
+            return true;
+        }
     case SDL_MOUSEMOTION:
-        io.AddMousePosEvent((float)Event.motion.x, (float)Event.motion.y);
-        return true;
+        {
+            GuiIO.AddMousePosEvent(static_cast<float>(Event.motion.x), static_cast<float>(Event.motion.y));
+            return true;
+        }
     case SDL_TEXTINPUT:
-        io.AddInputCharactersUTF8(Event.text.text);
-        return true;
+        {
+            GuiIO.AddInputCharactersUTF8(Event.text.text);
+            return true;
+        }
     case SDL_KEYDOWN:
     case SDL_KEYUP:
         {
-            ImGuiKey Key = SDLKeyToImGuiKey(Event.key.keysym.sym, Event.key.keysym.scancode);
-            io.AddKeyEvent(Key, Event.type == SDL_KEYDOWN);
+            const ImGuiKey Key = SDLKeyToImGuiKey(Event.key.keysym.sym, Event.key.keysym.scancode);
+            GuiIO.AddKeyEvent(Key, Event.type == SDL_KEYDOWN);
             UpdateModifiers(static_cast<SDL_Keymod>(Event.key.keysym.mod));
+            return true;
         }
-        return true;
     default:
         break;
     }
     return false;
 }
 
-static ImGuiKey SDLKeyToImGuiKey(SDL_Keycode Keycode, SDL_Scancode Scancode)
+static ImGuiKey SDLKeyToImGuiKey(const SDL_Keycode Keycode, const SDL_Scancode Scancode)
 {
     switch (Keycode)
     {
@@ -143,11 +171,11 @@ static ImGuiKey SDLKeyToImGuiKey(SDL_Keycode Keycode, SDL_Scancode Scancode)
     return ImGuiKey_None;
 }
 
-static void UpdateModifiers(SDL_Keymod Mods)
+static void UpdateModifiers(const SDL_Keymod Mods)
 {
-    ImGuiIO& io = ImGui::GetIO();
-    io.AddKeyEvent(ImGuiMod_Ctrl, (Mods & KMOD_CTRL) != 0);
-    io.AddKeyEvent(ImGuiMod_Shift, (Mods & KMOD_SHIFT) != 0);
-    io.AddKeyEvent(ImGuiMod_Alt, (Mods & KMOD_ALT) != 0);
-    io.AddKeyEvent(ImGuiMod_Super, (Mods & KMOD_GUI) != 0);
+    ImGuiIO& GuiIO = ImGui::GetIO();
+    GuiIO.AddKeyEvent(ImGuiMod_Ctrl, (Mods & KMOD_CTRL) != 0);
+    GuiIO.AddKeyEvent(ImGuiMod_Shift, (Mods & KMOD_SHIFT) != 0);
+    GuiIO.AddKeyEvent(ImGuiMod_Alt, (Mods & KMOD_ALT) != 0);
+    GuiIO.AddKeyEvent(ImGuiMod_Super, (Mods & KMOD_GUI) != 0);
 }

@@ -4,9 +4,7 @@
 
 #pragma once
 
-#include <memory>
 #include <SDL2/SDL.h>
-#include "imgui.h"
 
 namespace luvk_example
 {
