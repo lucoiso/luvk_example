@@ -209,8 +209,8 @@ int main()
             {
                 float Fps = static_cast<float>(Frames) / std::chrono::duration<float>(CurrentTime - FpsTime).count();
                 std::array<char, 64> Title{};
-                std::snprintf(Title.data(), Title.size(), "LuVK Example - %.0f FPS", Fps);
-                SDL_SetWindowTitle(Window, Title.data());
+                std::snprintf(std::data(Title), std::size(Title), "LuVK Example - %.0f FPS", Fps);
+                SDL_SetWindowTitle(Window, std::data(Title));
                 FpsValue = Fps;
                 FpsTime = CurrentTime;
                 Frames = 0;

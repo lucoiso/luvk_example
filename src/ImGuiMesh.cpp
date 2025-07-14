@@ -134,6 +134,7 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
     m_Index = m_Registry->RegisterMesh({}, {}, m_FontSet->GetLayout(), m_DescPool, m_FontImage, m_FontSampler, nullptr, {}, m_Pipeline, m_Device);
     auto& MeshEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_Index]);
     MeshEntry.MaterialPtr->SetDescriptor(m_FontSet);
+    MeshEntry.InstanceCount = 1;
     m_Mesh = luvk::Mesh(m_Registry, m_Index);
 }
 
@@ -192,8 +193,8 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
     for (int CmdListIt = 0; CmdListIt < RenderData->CmdListsCount; CmdListIt++)
     {
         const ImDrawList* DrawItem = RenderData->CmdLists[CmdListIt];
-        std::memcpy(Vertices.data() + vtxOffset, DrawItem->VtxBuffer.Data, DrawItem->VtxBuffer.Size * sizeof(ImDrawVert));
-        std::memcpy(Indices.data() + idxOffset, DrawItem->IdxBuffer.Data, DrawItem->IdxBuffer.Size * sizeof(ImDrawIdx));
+        std::memcpy(std::data(Vertices) + vtxOffset, DrawItem->VtxBuffer.Data, DrawItem->VtxBuffer.Size * sizeof(ImDrawVert));
+        std::memcpy(std::data(Indices) + idxOffset, DrawItem->IdxBuffer.Data, DrawItem->IdxBuffer.Size * sizeof(ImDrawIdx));
 
         vtxOffset += DrawItem->VtxBuffer.Size;
         idxOffset += DrawItem->IdxBuffer.Size;
@@ -213,8 +214,8 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
     Translate[0] = -1.0f - RenderData->DisplayPos.x * Scale[0];
     Translate[1] = -1.0f - RenderData->DisplayPos.y * Scale[1];
 
-    std::memcpy(MeshEntry.UniformCache.data(), Scale, sizeof(float) * 2);
-    std::memcpy(static_cast<char*>(reinterpret_cast<void*>(MeshEntry.UniformCache.data())) + sizeof(float) * 2, Translate, sizeof(float) * 2);
+    std::memcpy(std::data(MeshEntry.UniformCache), Scale, sizeof(float) * 2);
+    std::memcpy(static_cast<char*>(reinterpret_cast<void*>(std::data(MeshEntry.UniformCache))) + sizeof(float) * 2, Translate, sizeof(float) * 2);
 
     m_Mesh.Draw(Cmd);
 }

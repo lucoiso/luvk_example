@@ -7,7 +7,6 @@
 #include "ImGuiBackend/ImGuiBackendSDL2.hpp"
 #include "luvk_example/ImGuiMesh.hpp"
 
-#include <volk/volk.h>
 #include <memory>
 #include <SDL2/SDL.h>
 

@@ -1,8 +1,6 @@
 #pragma once
 
 #include <memory>
-#include <volk/volk.h>
-#include <imgui.h>
 #include <luvk/Core/MeshRegistry.hpp>
 #include <luvk/Core/DescriptorPool.hpp>
 #include <luvk/Core/DescriptorSet.hpp>

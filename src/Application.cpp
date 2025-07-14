@@ -11,9 +11,9 @@
 using namespace luvk_example;
 
 luvk_example::Application::Application(const std::uint32_t Width, const std::uint32_t Height)
-    : m_Input(),
-      m_Width(Width),
-      m_Height(Height)
+    :
+    m_Width(Width),
+    m_Height(Height)
 {
     SDL_Init(SDL_INIT_EVERYTHING);
     m_Window = SDL_CreateWindow("LuVK Example",
@@ -70,7 +70,7 @@ bool luvk_example::Application::Initialize()
     if (SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, nullptr))
     {
         std::vector<char const*> ExtensionsData(NumExtensions, nullptr);
-        SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, ExtensionsData.data());
+        SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, std::data(ExtensionsData));
 
         auto& InstExt = m_Renderer->GetExtensions();
         for (char const* Ext : ExtensionsData)
@@ -95,8 +95,8 @@ bool luvk_example::Application::Initialize()
     m_DeviceModule->SetPhysicalDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
     m_DeviceModule->SetSurface(Surface);
 
-    auto& DevExt = m_DeviceModule->GetExtensions();
-    if (DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
+    if (auto& DevExt = m_DeviceModule->GetExtensions();
+        DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
     {
         DevExt.SetExtensionState("", VK_EXT_MESH_SHADER_EXTENSION_NAME, true);
     }
