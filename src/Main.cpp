@@ -52,7 +52,12 @@ int main()
         auto ThreadPoolModule = App.GetThreadPool();
 
         ImGuiLayer GuiLayer;
-        if (!GuiLayer.Initialize(Window, Renderer))
+        if (!GuiLayer.Initialize(Window,
+                                 Renderer,
+                                 MeshRegistryModule,
+                                 DeviceModule,
+                                 SwapChainModule,
+                                 MemoryModule))
         {
             return EXIT_FAILURE;
         }
@@ -193,9 +198,9 @@ int main()
             ImGui::Text("FPS: %.0f", FpsValue);
             ImGui::End();
 
-            Renderer->EnqueueCommand([MemoryModule, &GuiLayer](const VkCommandBuffer& Cmd)
+            Renderer->EnqueueCommand([&GuiLayer](const VkCommandBuffer& Cmd)
             {
-                GuiLayer.Render(MemoryModule, Cmd);
+                GuiLayer.Render(Cmd);
             });
             Renderer->DrawFrame();
 

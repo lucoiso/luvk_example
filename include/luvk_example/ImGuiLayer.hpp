@@ -5,7 +5,7 @@
 #pragma once
 
 #include "ImGuiBackend/ImGuiBackendSDL2.hpp"
-#include "ImGuiBackend/ImGuiBackendLUVK.hpp"
+#include "luvk_example/ImGuiMesh.hpp"
 
 #include <volk/volk.h>
 #include <memory>
@@ -16,15 +16,20 @@ namespace luvk_example
     class ImGuiLayer
     {
         ImGuiBackendSDL2 m_SdlBackend{};
-        ImGuiBackendLUVK m_VkBackend{};
+        std::unique_ptr<ImGuiMesh> m_Mesh{};
 
     public:
         ImGuiLayer() = default;
 
-        bool Initialize(SDL_Window* Window, std::shared_ptr<luvk::Renderer> const& Renderer);
+        bool Initialize(SDL_Window* Window,
+                        std::shared_ptr<luvk::Renderer> const& Renderer,
+                        std::shared_ptr<luvk::MeshRegistry> const& Registry,
+                        std::shared_ptr<luvk::Device> const& Device,
+                        std::shared_ptr<luvk::SwapChain> const& Swap,
+                        std::shared_ptr<luvk::Memory> const& Memory);
         void Shutdown();
         void NewFrame(float DeltaTime) const;
-        void Render(std::shared_ptr<luvk::Memory> const& Memory, const VkCommandBuffer& Cmd);
+        void Render(const VkCommandBuffer& Cmd);
         bool ProcessEvent(SDL_Event const& Event) const;
     };
 } // namespace luvk_example
