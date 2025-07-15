@@ -20,7 +20,9 @@ bool ImGuiLayer::Initialize(SDL_Window* Window,
 
     const bool IsOk = m_SdlBackend.Init(Window);
     m_Mesh = std::make_unique<ImGuiMesh>(Registry, Device, Swap, Memory);
-    return IsOk && static_cast<bool>(m_Mesh);
+    m_Initialized = IsOk && static_cast<bool>(m_Mesh);
+
+    return m_Initialized;
 }
 
 void ImGuiLayer::Shutdown()
@@ -28,23 +30,31 @@ void ImGuiLayer::Shutdown()
     m_Mesh.reset();
     m_SdlBackend.Shutdown();
 
-    ImGui::DestroyContext();
+    if (m_Initialized)
+    {
+        ImGui::DestroyContext();
+    }
+
+    m_Initialized = false;
 }
 
 void ImGuiLayer::NewFrame(const float DeltaTime) const
 {
-    ImGuiIO& IO = ImGui::GetIO();
-    IO.DeltaTime = DeltaTime;
-    m_SdlBackend.NewFrame();
-    if (m_Mesh)
+    if (m_Initialized)
     {
-        m_Mesh->NewFrame();
+        ImGuiIO& IO = ImGui::GetIO();
+        IO.DeltaTime = DeltaTime;
+        m_SdlBackend.NewFrame();
+        if (m_Mesh)
+        {
+            m_Mesh->NewFrame();
+        }
     }
 }
 
 void ImGuiLayer::Render(const VkCommandBuffer& Cmd)
 {
-    if (m_Mesh)
+    if (m_Initialized && m_Mesh)
     {
         m_Mesh->Render(Cmd);
     }
@@ -52,5 +62,5 @@ void ImGuiLayer::Render(const VkCommandBuffer& Cmd)
 
 bool ImGuiLayer::ProcessEvent(SDL_Event const& Event) const
 {
-    return m_SdlBackend.ProcessEvent(Event);
+    return m_Initialized && m_SdlBackend.ProcessEvent(Event);
 }

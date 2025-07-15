@@ -14,6 +14,7 @@ namespace luvk_example
 {
     class ImGuiLayer
     {
+        bool m_Initialized{false};
         ImGuiBackendSDL2 m_SdlBackend{};
         std::unique_ptr<ImGuiMesh> m_Mesh{};
 
@@ -30,5 +31,6 @@ namespace luvk_example
         void NewFrame(float DeltaTime) const;
         void Render(const VkCommandBuffer& Cmd);
         bool ProcessEvent(SDL_Event const& Event) const;
+        inline bool IsInitialized() const { return m_Initialized; }
     };
 } // namespace luvk_example

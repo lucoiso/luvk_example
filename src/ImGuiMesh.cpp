@@ -4,9 +4,12 @@
 
 #include "luvk_example/ImGuiMesh.hpp"
 #include <luvk/Libraries/ShaderCompiler.hpp>
+#include <luvk/Libraries/VulkanHelpers.hpp>
 #include <luvk/Types/Material.hpp>
 #include <imgui.h>
 #include <vector>
+#include <volk/volk.h>
+#include <stdexcept>
 
 using namespace luvk_example;
 
@@ -46,6 +49,91 @@ namespace
                                 {
                                     outColor = fragColor * texture(Font, fragUV);
                                 })";
+                                
+    static void TransitionFontImage(std::shared_ptr<luvk::Device> const& Device, const VkImage Image)
+    {
+        VkDevice LogicalDevice = Device->GetLogicalDevice();
+        const std::uint32_t QueueFamily = Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
+        const VkQueue Queue = Device->GetQueue(QueueFamily);
+
+        VkCommandPoolCreateInfo PoolInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                        .pNext = nullptr,
+                                        .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
+                                        .queueFamilyIndex = QueueFamily};
+
+        VkCommandPool Pool{VK_NULL_HANDLE};
+
+        if (!LUVK_EXECUTE(vkCreateCommandPool(LogicalDevice, &PoolInfo, nullptr, &Pool)))
+        {
+            throw std::runtime_error("Failed to create command Pool for ImGui image transition");
+        }
+
+        VkCommandBufferAllocateInfo AllocationInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                                            .pNext = nullptr,
+                                            .commandPool = Pool,
+                                            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                            .commandBufferCount = 1};
+
+        VkCommandBuffer CommandBuffer{VK_NULL_HANDLE};
+
+        if (!LUVK_EXECUTE(vkAllocateCommandBuffers(LogicalDevice, &AllocationInfo, &CommandBuffer)))
+        {
+            vkDestroyCommandPool(LogicalDevice, Pool, nullptr);
+            throw std::runtime_error("Failed to allocate command buffer for ImGui image transition");
+        }
+
+        VkCommandBufferBeginInfo CommandBufferBeginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                    .pNext = nullptr,
+                                    .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                                    .pInheritanceInfo = nullptr};
+        vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
+
+        VkImageMemoryBarrier ImageBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                    .pNext = nullptr,
+                                    .srcAccessMask = 0,
+                                    .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                                    .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                                    .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                    .image = Image,
+                                    .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
+
+        vkCmdPipelineBarrier(CommandBuffer,
+                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                            0,
+                            0,
+                            nullptr,
+                            0,
+                            nullptr,
+                            1,
+                            &ImageBarrier);
+
+        vkEndCommandBuffer(CommandBuffer);
+
+        VkSubmitInfo QueueSubmitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                            .pNext = nullptr,
+                            .waitSemaphoreCount = 0,
+                            .pWaitSemaphores = nullptr,
+                            .pWaitDstStageMask = nullptr,
+                            .commandBufferCount = 1,
+                            .pCommandBuffers = &CommandBuffer,
+                            .signalSemaphoreCount = 0,
+                            .pSignalSemaphores = nullptr};
+
+        if (!LUVK_EXECUTE(vkQueueSubmit(Queue, 1, &QueueSubmitInfo, VK_NULL_HANDLE)))
+        {
+            vkFreeCommandBuffers(LogicalDevice, Pool, 1, &CommandBuffer);
+            vkDestroyCommandPool(LogicalDevice, Pool, nullptr);
+            throw std::runtime_error("Failed to QueueSubmitInfo image transition command");
+        }
+
+        vkQueueWaitIdle(Queue);
+
+        vkFreeCommandBuffers(LogicalDevice, Pool, 1, &CommandBuffer);
+        vkDestroyCommandPool(LogicalDevice, Pool, nullptr);
+    }
 }
 
 ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
@@ -86,8 +174,9 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
     IO.BackendRendererName = "ImGuiMesh";
     IO.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
-    unsigned char* Pixels;
-    int Width, Height;
+    unsigned char* Pixels = nullptr;
+    int Width = 0;
+    int Height = 0;
     IO.Fonts->GetTexDataAsRGBA32(&Pixels, &Width, &Height);
 
     m_FontImage->CreateImage(m_Device,
@@ -99,6 +188,7 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
                               .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
     m_FontImage->Upload({reinterpret_cast<std::byte const*>(Pixels), static_cast<size_t>(Width * Height * 4)});
+    TransitionFontImage(m_Device, m_FontImage->GetHandle());
 
     m_FontSampler->CreateSampler(m_Device, {});
     m_FontSet->UpdateImage(m_Device, m_FontImage->GetView(), m_FontSampler->GetHandle(), 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
