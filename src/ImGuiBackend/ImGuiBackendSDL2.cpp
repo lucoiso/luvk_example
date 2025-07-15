@@ -4,8 +4,8 @@
 
 #include "luvk_example/ImGuiBackend/ImGuiBackendSDL2.hpp"
 #include <SDL2/SDL_vulkan.h>
-
-#include "imgui.h"
+#include <cstdint>
+#include <imgui.h>
 
 using namespace luvk_example;
 
@@ -30,12 +30,12 @@ void ImGuiBackendSDL2::NewFrame() const
 {
     ImGuiIO& GuiIO = ImGui::GetIO();
 
-    int Width = 0;
-    int Height = 0;
+    std::int32_t Width = 0;
+    std::int32_t Height = 0;
     SDL_GetWindowSize(m_Window, &Width, &Height);
 
-    int DrawWidth = 0;
-    int DrawHeight = 0;
+    std::int32_t DrawWidth = 0;
+    std::int32_t DrawHeight = 0;
     SDL_Vulkan_GetDrawableSize(m_Window, &DrawWidth, &DrawHeight);
     GuiIO.DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 

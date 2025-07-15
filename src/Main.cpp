@@ -27,7 +27,16 @@
 
 using namespace luvk_example;
 
-int main()
+template <auto Functor>
+struct ScopeCaller
+{
+    ~ScopeCaller()
+    {
+        Functor();
+    }
+};
+
+std::int32_t main()
 {
     try
     {
@@ -50,6 +59,14 @@ int main()
         auto MemoryModule = App.GetMemory();
         auto MeshRegistryModule = App.GetMeshRegistry();
         auto ThreadPoolModule = App.GetThreadPool();
+
+        volkInitialize();
+        volkLoadInstance(Renderer->GetInstance());
+        volkLoadDevice(DeviceModule->GetLogicalDevice());
+        const ScopeCaller<[]
+        {
+            volkFinalize();
+        }> FreeVolk{};
 
         Cube CubeMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
@@ -82,15 +99,17 @@ int main()
         Input.BindEvent(SDL_WINDOWEVENT,
                         [&](SDL_Event const& Event)
                         {
-                            GuiLayer.ProcessEvent(Event);
                             if (Event.window.event == SDL_WINDOWEVENT_RESIZED ||
                                 Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
                                 Event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
                             {
                                 Renderer->SetPaused(true);
-                                int NewW = 0, NewH = 0;
-                                SDL_Vulkan_GetDrawableSize(Window, &NewW, &NewH);
-                                Renderer->Refresh({static_cast<std::uint32_t>(NewW), static_cast<std::uint32_t>(NewH)});
+                                {
+                                    std::int32_t NewW = 0;
+                                    std::int32_t NewH = 0;
+                                    SDL_Vulkan_GetDrawableSize(Window, &NewW, &NewH);
+                                    Renderer->Refresh({static_cast<std::uint32_t>(NewW), static_cast<std::uint32_t>(NewH)});
+                                }
                                 Renderer->SetPaused(false);
                             }
                             else if (Event.window.event == SDL_WINDOWEVENT_MINIMIZED)
@@ -110,13 +129,13 @@ int main()
                         {
                             if (Event.button.button == SDL_BUTTON_RIGHT)
                             {
-                                int W = 0, H = 0;
-                                SDL_Vulkan_GetDrawableSize(Window, &W, &H);
-                                const glm::vec2 Position{2.F * static_cast<float>(Event.button.x) / static_cast<float>(W) - 1.F,
-                                                         2.F * static_cast<float>(Event.button.y) / static_cast<float>(H) - 1.F};
+                                std::int32_t NewW = 0;
+                                std::int32_t NewH = 0;
+                                SDL_Vulkan_GetDrawableSize(Window, &NewW, &NewH);
+                                const glm::vec2 Position{2.F * static_cast<float>(Event.button.x) / static_cast<float>(NewW) - 1.F,
+                                                         2.F * static_cast<float>(Event.button.y) / static_cast<float>(NewH) - 1.F};
                                 TriangleMesh.AddInstance(Position);
                             }
-                            GuiLayer.ProcessEvent(Event);
                         });
 
         Input.BindEvent(SDL_MOUSEMOTION,
@@ -124,65 +143,44 @@ int main()
                         {
                             if (Input.LeftHeld())
                             {
-                                int W = 0, H = 0;
-                                SDL_Vulkan_GetDrawableSize(Window, &W, &H);
-                                const glm::vec2 Position{2.F * static_cast<float>(Event.motion.x) / static_cast<float>(W) - 1.F,
-                                                         2.F * static_cast<float>(Event.motion.y) / static_cast<float>(H) - 1.F};
+                                std::int32_t NewW = 0;
+                                std::int32_t NewH = 0;
+                                SDL_Vulkan_GetDrawableSize(Window, &NewW, &NewH);
+                                const glm::vec2 Position{2.F * static_cast<float>(Event.motion.x) / static_cast<float>(NewW) - 1.F,
+                                                         2.F * static_cast<float>(Event.motion.y) / static_cast<float>(NewH) - 1.F};
                                 PixelMesh.AddInstance(Position);
                             }
-                            GuiLayer.ProcessEvent(Event);
                         });
 
-        Input.BindEvent(SDL_MOUSEWHEEL,
+        Input.BindEvent(SDL_USEREVENT,
                         [&](SDL_Event const& Event)
                         {
-                            GuiLayer.ProcessEvent(Event);
-                        });
-        Input.BindEvent(SDL_MOUSEBUTTONUP,
-                        [&](SDL_Event const& Event)
-                        {
-                            GuiLayer.ProcessEvent(Event);
-                        });
-        Input.BindEvent(SDL_TEXTINPUT,
-                        [&](SDL_Event const& Event)
-                        {
-                            GuiLayer.ProcessEvent(Event);
-                        });
-        Input.BindEvent(SDL_KEYDOWN,
-                        [&](SDL_Event const& Event)
-                        {
-                            GuiLayer.ProcessEvent(Event);
-                        });
-        Input.BindEvent(SDL_KEYUP,
-                        [&](SDL_Event const& Event)
-                        {
-                            GuiLayer.ProcessEvent(Event);
+                            [[maybe_unused]] const auto _ = GuiLayer.ProcessEvent(Event);
                         });
 
         auto LastTime = std::chrono::high_resolution_clock::now();
-        int Frames = 0;
+        std::int32_t Frames = 0;
         auto FpsTime = LastTime;
-        float FpsValue = 0.F;
 
-        while (Input.Running())
+        static auto RenderLoop = [&]
         {
             Input.ProcessEvents();
             if (!Input.Running())
             {
-                break;
+                return false;
             }
 
-            int CurrentWidth = 0;
-            int CurrentHeight = 0;
+            std::int32_t CurrentWidth = 0;
+            std::int32_t CurrentHeight = 0;
             SDL_Vulkan_GetDrawableSize(Window, &CurrentWidth, &CurrentHeight);
 
             if (!CanRender)
             {
-                continue;
+                return true;
             }
 
-            auto CurrentTime = std::chrono::high_resolution_clock::now();
-            float DeltaTime = std::chrono::duration<float>(CurrentTime - LastTime).count();
+            const auto CurrentTime = std::chrono::high_resolution_clock::now();
+            const float DeltaTime = std::chrono::duration<float>(CurrentTime - LastTime).count();
             LastTime = CurrentTime;
 
             AppCamera.Update(DeltaTime, Input);
@@ -196,8 +194,8 @@ int main()
             {
                 GuiLayer.NewFrame(DeltaTime);
 
-                ImGui::Begin("Stats");
-                ImGui::Text("FPS: %.0f", FpsValue);
+                ImGui::Begin("Example");
+                ImGui::Text("Placeholder");
                 ImGui::End();
 
                 Renderer->EnqueueCommand([&GuiLayer](const VkCommandBuffer& Cmd)
@@ -211,18 +209,23 @@ int main()
             ++Frames;
             if (std::chrono::duration<float>(CurrentTime - FpsTime).count() >= 1.F)
             {
-                float Fps = static_cast<float>(Frames) / std::chrono::duration<float>(CurrentTime - FpsTime).count();
+                const float Fps = static_cast<float>(Frames) / std::chrono::duration<float>(CurrentTime - FpsTime).count();
                 std::array<char, 64> Title{};
-                std::snprintf(std::data(Title), std::size(Title), "LuVK Example - %.0f FPS", Fps);
+                std::snprintf(std::data(Title), std::size(Title), "LuVK Example - %.F FPS", Fps);
                 SDL_SetWindowTitle(Window, std::data(Title));
-                FpsValue = Fps;
                 FpsTime = CurrentTime;
                 Frames = 0;
             }
 
+            return true;
+        };
+
+        while (RenderLoop())
+        {
             std::this_thread::sleep_for(std::chrono::milliseconds(16));
         }
 
+        DeviceModule->WaitIdle();
         GuiLayer.Shutdown();
         luvk::FinalizeGlslang();
 
