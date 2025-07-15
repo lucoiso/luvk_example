@@ -63,6 +63,8 @@ int main()
 
         Renderer->InitializeRenderLoop();
 
+        // Initialize GLSLang before creating any ImGui resources that rely on
+        // runtime shader compilation
         luvk::InitializeGlslang();
 
         bool CanRender = true;

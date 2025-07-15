@@ -170,10 +170,15 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         return;
     }
 
-    const std::size_t VertexSize = RenderData->TotalVtxCount * sizeof(ImDrawVert);
-    const std::size_t IndexSize = RenderData->TotalIdxCount * sizeof(ImDrawIdx);
+    int const FbWidth = static_cast<int>(RenderData->DisplaySize.x * RenderData->FramebufferScale.x);
+    int const FbHeight = static_cast<int>(RenderData->DisplaySize.y * RenderData->FramebufferScale.y);
+    if (FbWidth <= 0 || FbHeight <= 0)
+    {
+        return;
+    }
 
-    auto& MeshEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_Index]);
+    std::size_t const VertexSize = RenderData->TotalVtxCount * sizeof(ImDrawVert);
+    std::size_t const IndexSize = RenderData->TotalIdxCount * sizeof(ImDrawIdx);
 
     if (!m_VtxBuffer || m_VtxBufferSize < VertexSize)
     {
@@ -182,9 +187,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         {
             m_VtxBuffer = std::make_shared<luvk::Buffer>();
         }
-
         m_VtxBuffer->CreateBuffer(m_Memory, {.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, .Size = m_VtxBufferSize, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
-        MeshEntry.VertexBuffer = m_VtxBuffer;
     }
 
     if (!m_IdxBuffer || m_IdxBufferSize < IndexSize)
@@ -194,44 +197,119 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         {
             m_IdxBuffer = std::make_shared<luvk::Buffer>();
         }
-
         m_IdxBuffer->CreateBuffer(m_Memory, {.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT, .Size = m_IdxBufferSize, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
-        MeshEntry.IndexBuffer = m_IdxBuffer;
     }
 
     std::vector<ImDrawVert> Vertices(RenderData->TotalVtxCount);
     std::vector<ImDrawIdx> Indices(RenderData->TotalIdxCount);
 
-    int vtxOffset = 0;
-    int idxOffset = 0;
-    for (int CmdListIt = 0; CmdListIt < RenderData->CmdListsCount; CmdListIt++)
+    int VtxOffset = 0;
+    int IdxOffset = 0;
+    for (int n = 0; n < RenderData->CmdListsCount; n++)
     {
-        const ImDrawList* DrawItem = RenderData->CmdLists[CmdListIt];
-        std::memcpy(std::data(Vertices) + vtxOffset, DrawItem->VtxBuffer.Data, DrawItem->VtxBuffer.Size * sizeof(ImDrawVert));
-        std::memcpy(std::data(Indices) + idxOffset, DrawItem->IdxBuffer.Data, DrawItem->IdxBuffer.Size * sizeof(ImDrawIdx));
-
-        vtxOffset += DrawItem->VtxBuffer.Size;
-        idxOffset += DrawItem->IdxBuffer.Size;
+        ImDrawList const* CmdList = RenderData->CmdLists[n];
+        std::memcpy(std::data(Vertices) + VtxOffset, CmdList->VtxBuffer.Data, CmdList->VtxBuffer.Size * sizeof(ImDrawVert));
+        std::memcpy(std::data(Indices) + IdxOffset, CmdList->IdxBuffer.Data, CmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
+        VtxOffset += CmdList->VtxBuffer.Size;
+        IdxOffset += CmdList->IdxBuffer.Size;
     }
 
     m_VtxBuffer->Upload(std::as_bytes(std::span{Vertices}));
     m_IdxBuffer->Upload(std::as_bytes(std::span{Indices}));
 
-    MeshEntry.IndexCount = static_cast<uint32_t>(RenderData->TotalIdxCount);
-    MeshEntry.UniformCache.resize(sizeof(float) * 4);
+    float const Push[4] = {2.0f / RenderData->DisplaySize.x,
+                           2.0f / RenderData->DisplaySize.y,
+                           -1.0f - RenderData->DisplayPos.x * (2.0f / RenderData->DisplaySize.x),
+                           -1.0f - RenderData->DisplayPos.y * (2.0f / RenderData->DisplaySize.y)};
 
-    float Scale[2];
-    Scale[0] = 2.0f / RenderData->DisplaySize.x;
-    Scale[1] = 2.0f / RenderData->DisplaySize.y;
+    VkBuffer VtxHandle = m_VtxBuffer->GetHandle();
+    VkDeviceSize const VtxBufOffset = 0;
+    vkCmdBindPipeline(Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline->GetPipeline());
+    vkCmdBindVertexBuffers(Cmd, 0, 1, &VtxHandle, &VtxBufOffset);
+    vkCmdBindIndexBuffer(Cmd, m_IdxBuffer->GetHandle(), 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+    vkCmdPushConstants(Cmd, m_Pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Push), Push);
 
-    float Translate[2];
-    Translate[0] = -1.0f - RenderData->DisplayPos.x * Scale[0];
-    Translate[1] = -1.0f - RenderData->DisplayPos.y * Scale[1];
+    VkViewport const Viewport{
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = static_cast<float>(FbWidth),
+        .height = static_cast<float>(FbHeight),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f};
+    vkCmdSetViewport(Cmd, 0, 1, &Viewport);
 
-    std::memcpy(std::data(MeshEntry.UniformCache), Scale, sizeof(float) * 2);
-    std::memcpy(static_cast<char*>(reinterpret_cast<void*>(std::data(MeshEntry.UniformCache))) + sizeof(float) * 2, Translate, sizeof(float) * 2);
+    // Will project scissor/clipping rectangles into framebuffer space
+    ImVec2 const ClipOff = RenderData->DisplayPos;
+    ImVec2 const ClipScale = RenderData->FramebufferScale;
 
-    m_Mesh.Draw(Cmd);
+    int GlobalVtxOffset = 0;
+    int GlobalIdxOffset = 0;
+    for (int n = 0; n < RenderData->CmdListsCount; n++)
+    {
+        ImDrawList const* CmdList = RenderData->CmdLists[n];
+        for (int cmd_i = 0; cmd_i < CmdList->CmdBuffer.Size; cmd_i++)
+        {
+            ImDrawCmd const* Pcmd = &CmdList->CmdBuffer[cmd_i];
+            if (Pcmd->UserCallback)
+            {
+                if (Pcmd->UserCallback == ImDrawCallback_ResetRenderState)
+                {
+                    vkCmdBindPipeline(Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline->GetPipeline());
+                    vkCmdBindVertexBuffers(Cmd, 0, 1, &VtxHandle, &VtxBufOffset);
+                    vkCmdBindIndexBuffer(Cmd, m_IdxBuffer->GetHandle(), 0, sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
+                    vkCmdPushConstants(Cmd, m_Pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Push), Push);
+                }
+                else
+                {
+                    Pcmd->UserCallback(CmdList, Pcmd);
+                }
+                continue;
+            }
+
+            ImVec2 clip_min((Pcmd->ClipRect.x - ClipOff.x) * ClipScale.x,
+                           (Pcmd->ClipRect.y - ClipOff.y) * ClipScale.y);
+            ImVec2 clip_max((Pcmd->ClipRect.z - ClipOff.x) * ClipScale.x,
+                           (Pcmd->ClipRect.w - ClipOff.y) * ClipScale.y);
+
+            if (clip_min.x < 0.0f)
+            {
+                clip_min.x = 0.0f;
+            }
+            if (clip_min.y < 0.0f)
+            {
+                clip_min.y = 0.0f;
+            }
+            if (clip_max.x > static_cast<float>(FbWidth))
+            {
+                clip_max.x = static_cast<float>(FbWidth);
+            }
+            if (clip_max.y > static_cast<float>(FbHeight))
+            {
+                clip_max.y = static_cast<float>(FbHeight);
+            }
+            if (clip_max.x <= clip_min.x || clip_max.y <= clip_min.y)
+            {
+                continue;
+            }
+
+            VkRect2D Scissor;
+            Scissor.offset.x = static_cast<int32_t>(clip_min.x);
+            Scissor.offset.y = static_cast<int32_t>(clip_min.y);
+            Scissor.extent.width = static_cast<uint32_t>(clip_max.x - clip_min.x);
+            Scissor.extent.height = static_cast<uint32_t>(clip_max.y - clip_min.y);
+            vkCmdSetScissor(Cmd, 0, 1, &Scissor);
+
+            VkDescriptorSet const DescSet = static_cast<VkDescriptorSet>(Pcmd->GetTexID());
+            vkCmdBindDescriptorSets(Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline->GetPipelineLayout(), 0, 1, &DescSet, 0, nullptr);
+
+            vkCmdDrawIndexed(Cmd, Pcmd->ElemCount, 1, Pcmd->IdxOffset + GlobalIdxOffset, Pcmd->VtxOffset + GlobalVtxOffset, 0);
+        }
+        GlobalIdxOffset += CmdList->IdxBuffer.Size;
+        GlobalVtxOffset += CmdList->VtxBuffer.Size;
+    }
+
+    VkRect2D const FullScissor{{0, 0}, {static_cast<uint32_t>(FbWidth), static_cast<uint32_t>(FbHeight)}};
+    vkCmdSetScissor(Cmd, 0, 1, &FullScissor);
 }
 
 luvk::Mesh& ImGuiMesh::GetMesh() noexcept
