@@ -170,8 +170,8 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         return;
     }
 
-    const size_t VertexSize = RenderData->TotalVtxCount * sizeof(ImDrawVert);
-    const size_t IndexSize = RenderData->TotalIdxCount * sizeof(ImDrawIdx);
+    const std::size_t VertexSize = RenderData->TotalVtxCount * sizeof(ImDrawVert);
+    const std::size_t IndexSize = RenderData->TotalIdxCount * sizeof(ImDrawIdx);
 
     auto& MeshEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_Index]);
 
