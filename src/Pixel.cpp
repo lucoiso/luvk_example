@@ -36,16 +36,16 @@ namespace
                                        outColor = vColor;
                                    })";
 
-    constexpr std::array<glm::vec2, 12> PixelVertices{{{0.01f, 0.0f},
+    constexpr std::array<glm::vec2, 12> PixelVertices{{{0.01f, 0.F},
                                                        {0.00866f, 0.005f},
                                                        {0.005f, 0.00866f},
-                                                       {0.0f, 0.01f},
+                                                       {0.F, 0.01f},
                                                        {-0.005f, 0.00866f},
                                                        {-0.00866f, 0.005f},
-                                                       {-0.01f, 0.0f},
+                                                       {-0.01f, 0.F},
                                                        {-0.00866f, -0.005f},
                                                        {-0.005f, -0.00866f},
-                                                       {0.0f, -0.01f},
+                                                       {0.F, -0.01f},
                                                        {0.005f, -0.00866f},
                                                        {0.00866f, -0.005f}}};
 

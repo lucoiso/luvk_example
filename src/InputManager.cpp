@@ -41,7 +41,16 @@ void luvk_example::InputManager::ProcessEvents()
         }
 
         if (auto Iterator = m_Bindings.find(Event.type);
-            Iterator != m_Bindings.end())
+            Iterator != std::end(m_Bindings))
+        {
+            for (auto& CallbackIt : Iterator->second)
+            {
+                CallbackIt(Event);
+            }
+        }
+
+        if (auto Iterator = m_Bindings.find(SDL_USEREVENT);
+            Iterator != std::end(m_Bindings))
         {
             for (auto& CallbackIt : Iterator->second)
             {

@@ -31,6 +31,10 @@ namespace luvk_example
         void NewFrame(float DeltaTime) const;
         void Render(const VkCommandBuffer& Cmd);
         bool ProcessEvent(SDL_Event const& Event) const;
-        inline bool IsInitialized() const { return m_Initialized; }
+
+        inline bool IsInitialized() const
+        {
+            return m_Initialized;
+        }
     };
 } // namespace luvk_example

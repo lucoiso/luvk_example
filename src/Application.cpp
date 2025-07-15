@@ -19,8 +19,8 @@ luvk_example::Application::Application(const std::uint32_t Width, const std::uin
     m_Window = SDL_CreateWindow("LuVK Example",
                                 SDL_WINDOWPOS_CENTERED,
                                 SDL_WINDOWPOS_CENTERED,
-                                static_cast<int>(Width),
-                                static_cast<int>(Height),
+                                static_cast<std::int32_t>(Width),
+                                static_cast<std::int32_t>(Height),
                                 SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 }
 
@@ -34,6 +34,7 @@ luvk_example::Application::~Application()
     {
         SDL_DestroyWindow(m_Window);
     }
+
     SDL_Quit();
 }
 

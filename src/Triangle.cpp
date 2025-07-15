@@ -71,7 +71,7 @@ namespace
 
     constexpr std::array<glm::vec2, 3> TriVertices{{{-0.05f, -0.05f},
                                                     {0.05f, -0.05f},
-                                                    {0.0f, 0.1f}}};
+                                                    {0.F, 0.1f}}};
 
     constexpr std::array<std::uint16_t, 3> TriIndices{{0, 1, 2}};
 } // namespace
