@@ -51,17 +51,6 @@ int main()
         auto MeshRegistryModule = App.GetMeshRegistry();
         auto ThreadPoolModule = App.GetThreadPool();
 
-        ImGuiLayer GuiLayer;
-        if (!GuiLayer.Initialize(Window,
-                                 Renderer,
-                                 MeshRegistryModule,
-                                 DeviceModule,
-                                 SwapChainModule,
-                                 MemoryModule))
-        {
-            return EXIT_FAILURE;
-        }
-
         Cube CubeMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Pixel PixelMesh{MeshRegistryModule, DeviceModule, SwapChainModule};
@@ -78,6 +67,17 @@ int main()
 
         bool CanRender = true;
         Camera AppCamera{};
+
+        ImGuiLayer GuiLayer;
+        if (!GuiLayer.Initialize(Window,
+                                 Renderer,
+                                 MeshRegistryModule,
+                                 DeviceModule,
+                                 SwapChainModule,
+                                 MemoryModule))
+        {
+            return EXIT_FAILURE;
+        }
 
         Input.BindEvent(SDL_WINDOWEVENT,
                         [&](SDL_Event const& Event)
