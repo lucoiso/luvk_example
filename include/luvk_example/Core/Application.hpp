@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "InputManager.hpp"
+#include "luvk_example/Core/InputManager.hpp"
 #include <SDL2/SDL.h>
 
 #include <memory>

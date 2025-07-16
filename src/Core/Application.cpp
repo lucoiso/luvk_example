@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Application.hpp"
+#include "luvk_example/Core/Application.hpp"
 #include <SDL2/SDL_vulkan.h>
 #include <execution>
 #include <vector>

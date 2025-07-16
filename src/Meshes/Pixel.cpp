@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Pixel.hpp"
+#include "luvk_example/Meshes/Pixel.hpp"
 #include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 

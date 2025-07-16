@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/ImGuiBackend/ImGuiBackendSDL2.hpp"
+#include "luvk_example/UserInterface/ImGuiBackendSDL2.hpp"
 #include <SDL2/SDL_vulkan.h>
 #include <cstdint>
 #include <imgui.h>
@@ -17,12 +17,31 @@ bool ImGuiBackendSDL2::Init(SDL_Window* Window)
     m_Window = Window;
     ImGuiIO& GuiIO = ImGui::GetIO();
     GuiIO.BackendPlatformName = "ImGuiBackendSDL2";
+    GuiIO.BackendFlags |= ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
+
+    m_MouseCursors[ImGuiMouseCursor_Arrow] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+    m_MouseCursors[ImGuiMouseCursor_TextInput] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+    m_MouseCursors[ImGuiMouseCursor_ResizeAll] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+    m_MouseCursors[ImGuiMouseCursor_ResizeNS] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+    m_MouseCursors[ImGuiMouseCursor_ResizeEW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+    m_MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
+    m_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
+    m_MouseCursors[ImGuiMouseCursor_Hand] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+    m_MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
 
     return true;
 }
 
 void ImGuiBackendSDL2::Shutdown()
 {
+    for (SDL_Cursor*& Cursor : m_MouseCursors)
+    {
+        if (Cursor)
+        {
+            SDL_FreeCursor(Cursor);
+            Cursor = nullptr;
+        }
+    }
     m_Window = nullptr;
 }
 
@@ -42,6 +61,20 @@ void ImGuiBackendSDL2::NewFrame() const
     if (Width > 0 && Height > 0)
     {
         GuiIO.DisplayFramebufferScale = ImVec2(static_cast<float>(DrawWidth) / Width, static_cast<float>(DrawHeight) / Height);
+    }
+
+    if (!(GuiIO.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange))
+    {
+        ImGuiMouseCursor const ImgCursor = ImGui::GetMouseCursor();
+        if (GuiIO.MouseDrawCursor || ImgCursor == ImGuiMouseCursor_None)
+        {
+            SDL_ShowCursor(SDL_FALSE);
+        }
+        else
+        {
+            SDL_SetCursor(m_MouseCursors[ImgCursor] ? m_MouseCursors[ImgCursor] : m_MouseCursors[ImGuiMouseCursor_Arrow]);
+            SDL_ShowCursor(SDL_TRUE);
+        }
     }
 }
 

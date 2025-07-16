@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Application.hpp"
+#include "luvk_example/Core/Application.hpp"
 
 #include <SDL2/SDL_vulkan.h>
 
@@ -16,11 +16,11 @@
 #include <thread>
 #include <array>
 
-#include "luvk_example/Camera.hpp"
-#include "luvk_example/Cube.hpp"
-#include "luvk_example/Pixel.hpp"
-#include "luvk_example/Triangle.hpp"
-#include "luvk_example/ImGuiLayer.hpp"
+#include "luvk_example/Core/Camera.hpp"
+#include "luvk_example/Meshes/Cube.hpp"
+#include "luvk_example/Meshes/Pixel.hpp"
+#include "luvk_example/Meshes/Triangle.hpp"
+#include "luvk_example/UserInterface/ImGuiLayer.hpp"
 #include <imgui.h>
 
 #include <luvk/Libraries/ShaderCompiler.hpp>

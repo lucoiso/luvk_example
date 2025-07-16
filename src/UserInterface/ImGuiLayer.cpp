@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/ImGuiLayer.hpp"
+#include "luvk_example/UserInterface/ImGuiLayer.hpp"
 #include <imgui.h>
 
 using namespace luvk_example;

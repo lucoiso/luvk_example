@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Cube.hpp"
+#include "luvk_example/Meshes/Cube.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>

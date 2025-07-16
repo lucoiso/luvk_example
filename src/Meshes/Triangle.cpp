@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Triangle.hpp"
+#include "luvk_example/Meshes/Triangle.hpp"
 #include <random>
 #include <glm/gtc/constants.hpp>
 #include <array>

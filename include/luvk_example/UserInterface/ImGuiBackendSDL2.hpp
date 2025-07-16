@@ -5,12 +5,15 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include <array>
+#include <imgui.h>
 
 namespace luvk_example
 {
     class ImGuiBackendSDL2
     {
         SDL_Window* m_Window{};
+        std::array<SDL_Cursor*, ImGuiMouseCursor_COUNT> m_MouseCursors{};
 
     public:
         ImGuiBackendSDL2() = default;
