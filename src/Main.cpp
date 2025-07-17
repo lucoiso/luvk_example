@@ -159,9 +159,6 @@ std::int32_t main()
                         });
 
         auto LastTime = std::chrono::high_resolution_clock::now();
-        std::int32_t Frames = 0;
-        auto FpsTime = LastTime;
-
         static auto RenderLoop = [&]
         {
             Input.ProcessEvents();
@@ -201,25 +198,14 @@ std::int32_t main()
             }
 
             Renderer->DrawFrame();
-
-            ++Frames;
-            if (std::chrono::duration<float>(CurrentTime - FpsTime).count() >= 1.F)
-            {
-                const float Fps = static_cast<float>(Frames) / std::chrono::duration<float>(CurrentTime - FpsTime).count();
-                std::array<char, 64> Title{};
-                std::snprintf(std::data(Title), std::size(Title), "LuVK Example - %.F FPS", Fps);
-                SDL_SetWindowTitle(Window, std::data(Title));
-                FpsTime = CurrentTime;
-                Frames = 0;
-            }
-
             return true;
         };
 
-        while (RenderLoop())
+        do
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
         }
+        while (RenderLoop());
 
         DeviceModule->WaitIdle();
         GuiLayer.Shutdown();
