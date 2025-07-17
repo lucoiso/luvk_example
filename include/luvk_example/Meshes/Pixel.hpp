@@ -13,7 +13,7 @@
 #include <memory>
 
 namespace luvk_example {
-/** Mesh para particulas de um pixel */
+/** Pixel particle mesh */
 class Pixel {
   std::shared_ptr<luvk::MeshRegistry> m_Registry{};
   std::shared_ptr<luvk::Pipeline> m_Pipeline{};
@@ -22,15 +22,15 @@ class Pixel {
   std::vector<luvk::MeshRegistry::InstanceInfo> m_Instances{};
 
 public:
-  /** Construtor */
+  /** Constructor */
   Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
         const std::shared_ptr<luvk::Device> &Device,
         const std::shared_ptr<luvk::SwapChain> &Swap);
 
-  /** Adiciona uma instancia */
-  void AddInstance(glm::vec2 Position);
+  /** Adds an instance */
+  void AddInstance(glm::vec2 const &Position);
 
-  /** Mesh para registro */
-  [[nodiscard]] luvk::Mesh &GetMesh() noexcept;
+  /** Mesh handle for registry */
+  [[nodiscard]] constexpr luvk::Mesh &GetMesh() noexcept;
 };
 } // namespace luvk_example

@@ -8,19 +8,19 @@
 #include <glm/glm.hpp>
 
 namespace luvk_example {
-/** Camera basica para movimentacao na cena */
+/** Basic camera for scene movement */
 class Camera {
   glm::vec3 m_Position{0.F, 0.F, 2.F};
   float m_Speed{2.F};
 
 public:
-  /** Construtor padrao */
+  /** Default constructor */
   constexpr Camera() = default;
 
-  /** Atualiza a camera com o tempo decorrido */
+  /** Updates the camera using the elapsed time */
   void Update(float DeltaTime, luvk_example::InputManager const &Input);
 
-  /** Retorna a matriz de visualizacao */
+  /** Returns the view matrix */
   [[nodiscard]] glm::mat4 GetViewMatrix() const;
 };
 } // namespace luvk_example

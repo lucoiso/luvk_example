@@ -12,7 +12,7 @@
 #include <vector>
 
 namespace luvk_example {
-/** Responsavel por processar eventos de entrada */
+/** Handles input events */
 class InputManager {
   using EventCallbacks = std::vector<std::function<void(SDL_Event const &)>>;
 
@@ -22,28 +22,28 @@ class InputManager {
   bool m_LeftHeld{false};
 
 public:
-  /** Construtor */
+  /** Constructor */
   InputManager();
   ~InputManager() = default;
 
-  /** Associa um callback a um evento SDL */
+  /** Associates a callback with an SDL event */
   void BindEvent(Uint32 Type,
                  std::function<void(SDL_Event const &)> const &Callback);
 
-  /** Processa a fila de eventos */
+  /** Processes the event queue */
   void ProcessEvents();
 
-  /** Verifica se a aplicacao ainda esta rodando */
+  /** Whether the application is still running */
   [[nodiscard]] constexpr bool Running() const noexcept { return m_Running; }
 
-  /** Checa se uma tecla esta pressionada */
+  /** Checks if a key is pressed */
   [[nodiscard]] bool IsKeyPressed(SDL_Keycode key) const noexcept;
 
-  /** Botao esquerdo do mouse esta pressionado */
+  /** Whether the left mouse button is held */
   [[nodiscard]] constexpr bool LeftHeld() const noexcept { return m_LeftHeld; }
 
 private:
-  /** Executa os callbacks registrados para o tipo */
+  /** Executes the callbacks registered for the type */
   void InvokeCallbacks(Uint32 Type, SDL_Event const &Event);
 };
 } // namespace luvk_example

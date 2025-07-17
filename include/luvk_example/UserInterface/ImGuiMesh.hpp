@@ -13,7 +13,7 @@
 #include <memory>
 
 namespace luvk_example {
-/** Mesh usada para renderizar ImGui via luvk */
+/** Mesh used to render ImGui through luvk */
 class ImGuiMesh {
   std::shared_ptr<luvk::MeshRegistry> m_Registry{};
   std::shared_ptr<luvk::DescriptorPool> m_DescPool{};
@@ -35,24 +35,24 @@ class ImGuiMesh {
 
 public:
   /**
-   * @brief Construtor
-   * @param Registry Gerenciador de malhas
-   * @param Device   Dispositivo Vulkan
+   * @brief Constructor
+   * @param Registry Mesh registry
+   * @param Device   Vulkan device
    * @param Swap     Swapchain
-   * @param Memory   Allocador de memoria
+   * @param Memory   Memory allocator
    */
   ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
             std::shared_ptr<luvk::Device> Device,
             std::shared_ptr<luvk::SwapChain> Swap,
             std::shared_ptr<luvk::Memory> Memory);
 
-  /** Prepara novo frame de ImGui */
+  /** Prepares a new ImGui frame */
   void NewFrame() const;
 
-  /** Executa a renderizacao do draw data */
+  /** Executes rendering of the draw data */
   void Render(const VkCommandBuffer &Cmd);
 
-  /** Mesh resultante para registro na renderer */
-  [[nodiscard]] luvk::Mesh &GetMesh() noexcept;
+  /** Resulting mesh for the renderer */
+  [[nodiscard]] constexpr luvk::Mesh &GetMesh() noexcept;
 };
 } // namespace luvk_example

@@ -9,25 +9,25 @@
 #include <imgui.h>
 
 namespace luvk_example {
-/** Backend SDL2 para integracao com ImGui */
+/** SDL2 backend for ImGui integration */
 class ImGuiBackendSDL2 {
   SDL_Window *m_Window{};
   std::array<SDL_Cursor *, ImGuiMouseCursor_COUNT> m_MouseCursors{};
 
 public:
-  /** Construtor */
+  /** Constructor */
   constexpr ImGuiBackendSDL2() = default;
 
-  /** Inicializa com a janela SDL */
+  /** Initializes using the SDL window */
   bool Init(SDL_Window *Window);
 
-  /** Libera recursos */
+  /** Releases resources */
   void Shutdown();
 
-  /** Inicia um novo frame */
+  /** Begins a new frame */
   void NewFrame() const;
 
-  /** Processa um evento SDL */
+  /** Processes an SDL event */
   bool ProcessEvent(SDL_Event const &Event) const;
 };
 } // namespace luvk_example

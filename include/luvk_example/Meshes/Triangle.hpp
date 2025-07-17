@@ -17,7 +17,7 @@
 #include <memory>
 
 namespace luvk_example {
-/** Mesh composto por particulas triangulares */
+/** Triangle particle mesh */
 class Triangle {
   struct alignas(16) Particle {
     glm::vec2 Offset{};
@@ -42,19 +42,19 @@ class Triangle {
   std::vector<Particle> m_Particles{};
 
 public:
-  /** Construtor */
+  /** Constructor */
   Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
            const std::shared_ptr<luvk::Device> &Device,
            const std::shared_ptr<luvk::SwapChain> &Swap,
            const std::shared_ptr<luvk::Memory> &Memory);
 
-  /** Atualiza particulas */
+  /** Updates particles */
   void Update(float DeltaTime) const;
 
-  /** Adiciona uma nova particula */
-  void AddInstance(glm::vec2 Position);
+  /** Adds a new particle */
+  void AddInstance(glm::vec2 const &Position);
 
-  /** Mesh resultante */
-  [[nodiscard]] luvk::Mesh &GetMesh() noexcept;
+  /** Resulting mesh */
+  [[nodiscard]] constexpr luvk::Mesh &GetMesh() noexcept;
 };
 } // namespace luvk_example

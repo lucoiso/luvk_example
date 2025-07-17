@@ -132,7 +132,7 @@ luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
 
 void luvk_example::Cube::Update(const float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const
 {
-    static float Elapsed = 0.F;
+    static constinit float Elapsed = 0.F;
     Elapsed += DeltaTime;
 
     const glm::mat4 Model = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));

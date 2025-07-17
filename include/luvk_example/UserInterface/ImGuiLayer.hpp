@@ -11,17 +11,17 @@
 #include <memory>
 
 namespace luvk_example {
-/** Camada responsavel pela interface ImGui */
+/** Layer that handles the ImGui interface */
 class ImGuiLayer {
   ImGuiBackendSDL2 m_SdlBackend{};
   std::unique_ptr<ImGuiMesh> m_Mesh{};
   bool m_Initialized{false};
 
 public:
-  /** Construtor */
+  /** Constructor */
   constexpr ImGuiLayer() = default;
 
-  /** Inicializa os componentes da camada */
+  /** Initializes layer components */
   bool Initialize(SDL_Window *Window,
                   std::shared_ptr<luvk::Renderer> const &Renderer,
                   std::shared_ptr<luvk::MeshRegistry> const &Registry,
@@ -29,19 +29,19 @@ public:
                   std::shared_ptr<luvk::SwapChain> const &Swap,
                   std::shared_ptr<luvk::Memory> const &Memory);
 
-  /** Finaliza e libera recursos */
+  /** Shuts down and releases resources */
   void Shutdown();
 
-  /** Atualiza ImGui para um novo frame */
+  /** Updates ImGui for a new frame */
   void NewFrame(float DeltaTime) const;
 
-  /** Renderiza os elementos de ImGui */
+  /** Renders ImGui elements */
   void Render(const VkCommandBuffer &Cmd);
 
-  /** Encaminha evento para o backend */
+  /** Forwards an event to the backend */
   bool ProcessEvent(SDL_Event const &Event) const;
 
-  /** Indica se a camada foi inicializada */
+  /** Indicates whether the layer has been initialized */
   [[nodiscard]] constexpr bool IsInitialized() const noexcept {
     return m_Initialized;
   }

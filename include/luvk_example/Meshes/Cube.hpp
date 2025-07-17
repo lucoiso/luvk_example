@@ -14,7 +14,7 @@
 #include <memory>
 
 namespace luvk_example {
-/** Mesh de cubo simples */
+/** Simple cube mesh */
 class Cube {
   std::shared_ptr<luvk::MeshRegistry> m_Registry{};
   std::shared_ptr<luvk::Pipeline> m_Pipeline{};
@@ -23,17 +23,17 @@ class Cube {
   luvk::Mesh m_Mesh{};
 
 public:
-  /** Construtor do cubo */
+  /** Cube constructor */
   Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
        const std::shared_ptr<luvk::Device> &Device,
        const std::shared_ptr<luvk::SwapChain> &Swap,
        const std::shared_ptr<luvk::Memory> &Memory);
 
-  /** Atualiza uniformes */
+  /** Updates uniforms */
   void Update(float DeltaTime, glm::mat4 const &View,
               glm::mat4 const &Proj) const;
 
-  /** Mesh para registro */
-  [[nodiscard]] luvk::Mesh &GetMesh() noexcept;
+  /** Mesh handle for registry */
+  [[nodiscard]] constexpr luvk::Mesh &GetMesh() noexcept;
 };
 } // namespace luvk_example

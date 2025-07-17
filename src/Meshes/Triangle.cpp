@@ -180,7 +180,7 @@ void luvk_example::Triangle::Update(const float DeltaTime) const
     m_Registry->UpdateUniform(m_ComputeIndex, std::as_bytes(std::span{&DeltaTime, 1}));
 }
 
-void luvk_example::Triangle::AddInstance(const glm::vec2 Position)
+void luvk_example::Triangle::AddInstance(glm::vec2 const &Position)
 {
     static std::mt19937 Generator{std::random_device{}()};
     static std::uniform_real_distribution Distribution(0.F, 1.F);

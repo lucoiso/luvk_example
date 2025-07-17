@@ -99,7 +99,7 @@ luvk_example::Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
     m_Mesh = luvk::Mesh(m_Registry, m_Index);
 }
 
-void luvk_example::Pixel::AddInstance(const glm::vec2 Position)
+void luvk_example::Pixel::AddInstance(glm::vec2 const &Position)
 {
     luvk::MeshRegistry::InstanceInfo Instance{.XForm = {.Position = {Position.x, Position.y, 0.F}}, .Color = {1.F, 1.F, 1.F, 1.F}};
     m_Instances.push_back(std::move(Instance));
