@@ -17,10 +17,10 @@ namespace luvk_example
     {
         using EventCallbacks = std::vector<std::function<void(SDL_Event const&)>>;
 
-        bool m_Running{true};
-        bool m_LeftHeld{false};
         std::unordered_map<Uint32, EventCallbacks> m_Bindings{};
         std::unordered_set<SDL_Keycode> m_PressedKeys{};
+        bool m_Running{true};
+        bool m_LeftHeld{false};
 
     public:
         InputManager();

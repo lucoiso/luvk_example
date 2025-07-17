@@ -14,9 +14,9 @@ namespace luvk_example
 {
     class ImGuiLayer
     {
-        bool m_Initialized{false};
         ImGuiBackendSDL2 m_SdlBackend{};
         std::unique_ptr<ImGuiMesh> m_Mesh{};
+        bool m_Initialized{false};
 
     public:
         constexpr ImGuiLayer() = default;
