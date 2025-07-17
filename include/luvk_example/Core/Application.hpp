@@ -9,15 +9,15 @@
 
 #include <memory>
 
-#include <luvk/Core/CommandPool.hpp>
-#include <luvk/Core/Debug.hpp>
-#include <luvk/Core/Device.hpp>
-#include <luvk/Core/Memory.hpp>
-#include <luvk/Core/MeshRegistry.hpp>
-#include <luvk/Core/Renderer.hpp>
-#include <luvk/Core/SwapChain.hpp>
-#include <luvk/Core/Synchronization.hpp>
-#include <luvk/Core/ThreadPool.hpp>
+#include <luvk/Modules/MeshRegistry.hpp>
+#include <luvk/Modules/CommandPool.hpp>
+#include <luvk/Modules/Debug.hpp>
+#include <luvk/Modules/Device.hpp>
+#include <luvk/Modules/Memory.hpp>
+#include <luvk/Modules/Renderer.hpp>
+#include <luvk/Modules/SwapChain.hpp>
+#include <luvk/Modules/Synchronization.hpp>
+#include <luvk/Modules/ThreadPool.hpp>
 
 namespace luvk_example
 {
@@ -39,11 +39,7 @@ namespace luvk_example
         std::shared_ptr<luvk::ThreadPool> m_ThreadPoolModule{};
 
     public:
-        /**
-         * @brief Constructor
-         * @param Width  Window width
-         * @param Height Window height
-         */
+        /** Constructor */
         Application(std::uint32_t Width, std::uint32_t Height);
 
         /** Destructor */

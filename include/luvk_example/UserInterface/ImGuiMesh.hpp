@@ -1,14 +1,19 @@
+// Author: Lucas Vilas-Boas
+// Year: 2025
+// Repo: https://github.com/lucoiso/luvk_example
+
 #pragma once
 
-#include <luvk/Core/DescriptorPool.hpp>
-#include <luvk/Core/DescriptorSet.hpp>
-#include <luvk/Core/Device.hpp>
-#include <luvk/Core/Image.hpp>
-#include <luvk/Core/Memory.hpp>
-#include <luvk/Core/MeshRegistry.hpp>
-#include <luvk/Core/Pipeline.hpp>
-#include <luvk/Core/Sampler.hpp>
-#include <luvk/Core/SwapChain.hpp>
+#include <imgui.h>
+#include <luvk/Resources/DescriptorSet.hpp>
+#include <luvk/Resources/Image.hpp>
+#include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Resources/Sampler.hpp>
+#include <luvk/Modules/DescriptorPool.hpp>
+#include <luvk/Modules/Device.hpp>
+#include <luvk/Modules/Memory.hpp>
+#include <luvk/Modules/MeshRegistry.hpp>
+#include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Types/Mesh.hpp>
 #include <memory>
 
@@ -36,13 +41,7 @@ namespace luvk_example
         std::vector<ImDrawIdx> m_Indices{};
 
     public:
-        /**
-         * @brief Constructor
-         * @param Registry Mesh registry
-         * @param Device   Vulkan device
-         * @param Swap     Swapchain
-         * @param Memory   Memory allocator
-         */
+        /** Constructor */
         ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
                   std::shared_ptr<luvk::Device> Device,
                   std::shared_ptr<luvk::SwapChain> Swap,

@@ -62,7 +62,7 @@ luvk_example::Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
     auto TriFrag = luvk::CompileGLSLToSPIRV(TriFragSrc, EShLangFragment);
 
     const VkExtent2D Extent = Swap->GetExtent();
-    const std::array Formats{Swap->m_Arguments.Format};
+    const std::array Formats{Swap->GetCreationArguments().Format};
 
     constexpr std::array TriBindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
                                      VkVertexInputBindingDescription{1, sizeof(luvk::MeshInstance), VK_VERTEX_INPUT_RATE_INSTANCE}};
@@ -108,9 +108,4 @@ void luvk_example::Pixel::AddInstance(glm::vec2 const &Position)
     {
         m_Registry->UpdateInstances(m_Index, m_Instances);
     }
-}
-
-luvk::Mesh& luvk_example::Pixel::GetMesh() noexcept
-{
-    return m_Mesh;
 }

@@ -5,10 +5,10 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <luvk/Core/Device.hpp>
-#include <luvk/Core/MeshRegistry.hpp>
-#include <luvk/Core/Pipeline.hpp>
-#include <luvk/Core/SwapChain.hpp>
+#include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Modules/Device.hpp>
+#include <luvk/Modules/MeshRegistry.hpp>
+#include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Types/Mesh.hpp>
 #include <memory>
 

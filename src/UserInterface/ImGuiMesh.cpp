@@ -6,9 +6,8 @@
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Libraries/VulkanHelpers.hpp>
 #include <luvk/Types/Material.hpp>
-#include <luvk/Core/Buffer.hpp>
+#include <luvk/Resources/Buffer.hpp>
 #include <array>
-#include <imgui.h>
 #include <vector>
 #include <volk/volk.h>
 #include <stdexcept>
@@ -98,8 +97,8 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
 
     auto Staging = std::make_shared<luvk::Buffer>();
     Staging->CreateBuffer(m_Memory,
-                          {.Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                           .Size = static_cast<VkDeviceSize>(Width * Height * 4),
+                          {.Size = static_cast<VkDeviceSize>(Width * Height * 4),
+                           .Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                            .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
     Staging->Upload({reinterpret_cast<std::byte const*>(Pixels), static_cast<size_t>(Width * Height * 4)});
@@ -124,7 +123,7 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
     auto FragmentShader = luvk::CompileGLSLToSPIRV(FragSrc, EShLangFragment);
 
     const VkExtent2D Extent = m_SwapChain->GetExtent();
-    const std::array Formats{m_SwapChain->m_Arguments.Format};
+    const std::array Formats{m_SwapChain->GetCreationArguments().Format};
 
     constexpr std::array Bindings{VkVertexInputBindingDescription{0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX}};
     constexpr std::array Attrs{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, pos)},
@@ -190,7 +189,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         {
             m_VtxBuffer = std::make_shared<luvk::Buffer>();
         }
-        m_VtxBuffer->CreateBuffer(m_Memory, {.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, .Size = m_VtxBufferSize, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+        m_VtxBuffer->CreateBuffer(m_Memory, {.Size = m_VtxBufferSize, .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
     }
 
     if (!m_IdxBuffer || m_IdxBufferSize < IndexSize)
@@ -200,7 +199,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         {
             m_IdxBuffer = std::make_shared<luvk::Buffer>();
         }
-        m_IdxBuffer->CreateBuffer(m_Memory, {.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT, .Size = m_IdxBufferSize, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+        m_IdxBuffer->CreateBuffer(m_Memory, {.Size = m_IdxBufferSize, .Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
     }
 
     if (m_Vertices.capacity() < static_cast<std::size_t>(RenderData->TotalVtxCount))
@@ -338,9 +337,4 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
 
     VkRect2D const FullScissor{{0, 0}, {static_cast<std::uint32_t>(FbWidth), static_cast<std::uint32_t>(FbHeight)}};
     vkCmdSetScissor(Cmd, 0, 1, &FullScissor);
-}
-
-luvk::Mesh& ImGuiMesh::GetMesh() noexcept
-{
-    return m_Mesh;
 }
