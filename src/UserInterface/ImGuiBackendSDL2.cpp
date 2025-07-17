@@ -72,7 +72,8 @@ void ImGuiBackendSDL2::NewFrame() const
         }
         else
         {
-            SDL_SetCursor(m_MouseCursors[ImgCursor] ? m_MouseCursors[ImgCursor] : m_MouseCursors[ImGuiMouseCursor_Arrow]);
+            SDL_Cursor* const Cursor = m_MouseCursors[ImgCursor] ? m_MouseCursors[ImgCursor] : m_MouseCursors[ImGuiMouseCursor_Arrow];
+            SDL_SetCursor(Cursor);
             SDL_ShowCursor(SDL_TRUE);
         }
     }

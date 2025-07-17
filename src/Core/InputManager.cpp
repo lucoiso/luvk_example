@@ -10,7 +10,7 @@ luvk_example::InputManager::InputManager() = default;
 
 void luvk_example::InputManager::BindEvent(const Uint32 Type, std::function<void(SDL_Event const&)> const& Callback)
 {
-    auto [Iterator, Inserted] = m_Bindings.try_emplace(Type, std::vector<std::function<void(SDL_Event const&)>>{});
+    auto [Iterator, Inserted] = m_Bindings.try_emplace(Type, EventCallbacks{});
     Iterator->second.push_back(Callback);
 }
 
@@ -19,44 +19,40 @@ void luvk_example::InputManager::ProcessEvents()
     SDL_Event Event;
     while (SDL_PollEvent(&Event))
     {
-        if (Event.type == SDL_QUIT)
+        switch (Event.type)
         {
-            m_Running = false;
-        }
-        else if (Event.type == SDL_KEYDOWN)
-        {
-            m_PressedKeys.insert(Event.key.keysym.sym);
-        }
-        else if (Event.type == SDL_KEYUP)
-        {
-            m_PressedKeys.erase(Event.key.keysym.sym);
-        }
-        else if (Event.type == SDL_MOUSEBUTTONDOWN && Event.button.button == SDL_BUTTON_LEFT)
-        {
-            m_LeftHeld = true;
-        }
-        else if (Event.type == SDL_MOUSEBUTTONUP && Event.button.button == SDL_BUTTON_LEFT)
-        {
-            m_LeftHeld = false;
+        case SDL_QUIT: m_Running = false; break;
+        case SDL_KEYDOWN: m_PressedKeys.insert(Event.key.keysym.sym); break;
+        case SDL_KEYUP: m_PressedKeys.erase(Event.key.keysym.sym); break;
+        case SDL_MOUSEBUTTONDOWN:
+            if (Event.button.button == SDL_BUTTON_LEFT)
+            {
+                m_LeftHeld = true;
+            }
+            break;
+        case SDL_MOUSEBUTTONUP:
+            if (Event.button.button == SDL_BUTTON_LEFT)
+            {
+                m_LeftHeld = false;
+            }
+            break;
+        default:
+            break;
         }
 
-        if (auto Iterator = m_Bindings.find(Event.type);
-            Iterator != std::end(m_Bindings))
+        auto const CallCallbacks = [this, &Event](Uint32 Type)
         {
-            for (auto& CallbackIt : Iterator->second)
+            if (auto It = m_Bindings.find(Type); It != m_Bindings.end())
             {
-                CallbackIt(Event);
+                for (auto const& CallbackIt : It->second)
+                {
+                    CallbackIt(Event);
+                }
             }
-        }
+        };
 
-        if (auto Iterator = m_Bindings.find(SDL_USEREVENT);
-            Iterator != std::end(m_Bindings))
-        {
-            for (auto& CallbackIt : Iterator->second)
-            {
-                CallbackIt(Event);
-            }
-        }
+        CallCallbacks(Event.type);
+        CallCallbacks(SDL_USEREVENT);
     }
 }
 

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include <cstdint>
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
@@ -14,9 +15,11 @@ namespace luvk_example
 {
     class InputManager
     {
+        using EventCallbacks = std::vector<std::function<void(SDL_Event const&)>>;
+
         bool m_Running{true};
         bool m_LeftHeld{false};
-        std::unordered_map<Uint32, std::vector<std::function<void(SDL_Event const&)>>> m_Bindings{};
+        std::unordered_map<Uint32, EventCallbacks> m_Bindings{};
         std::unordered_set<SDL_Keycode> m_PressedKeys{};
 
     public:
