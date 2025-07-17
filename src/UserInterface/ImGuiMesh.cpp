@@ -203,22 +203,34 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         m_IdxBuffer->CreateBuffer(m_Memory, {.Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT, .Size = m_IdxBufferSize, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
     }
 
-    std::vector<ImDrawVert> Vertices(RenderData->TotalVtxCount);
-    std::vector<ImDrawIdx> Indices(RenderData->TotalIdxCount);
+    if (m_Vertices.capacity() < static_cast<std::size_t>(RenderData->TotalVtxCount))
+    {
+        m_Vertices.reserve(RenderData->TotalVtxCount);
+    }
+    if (m_Indices.capacity() < static_cast<std::size_t>(RenderData->TotalIdxCount))
+    {
+        m_Indices.reserve(RenderData->TotalIdxCount);
+    }
+    m_Vertices.resize(RenderData->TotalVtxCount);
+    m_Indices.resize(RenderData->TotalIdxCount);
 
     std::int32_t VtxOffset = 0;
     std::int32_t IdxOffset = 0;
     for (std::int32_t ListIt = 0; ListIt < RenderData->CmdListsCount; ListIt++)
     {
         ImDrawList const* CmdList = RenderData->CmdLists[ListIt];
-        std::memcpy(std::data(Vertices) + VtxOffset, CmdList->VtxBuffer.Data, CmdList->VtxBuffer.Size * sizeof(ImDrawVert));
-        std::memcpy(std::data(Indices) + IdxOffset, CmdList->IdxBuffer.Data, CmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
+        std::memcpy(std::data(m_Vertices) + VtxOffset,
+                    CmdList->VtxBuffer.Data,
+                    CmdList->VtxBuffer.Size * sizeof(ImDrawVert));
+        std::memcpy(std::data(m_Indices) + IdxOffset,
+                    CmdList->IdxBuffer.Data,
+                    CmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
         VtxOffset += CmdList->VtxBuffer.Size;
         IdxOffset += CmdList->IdxBuffer.Size;
     }
 
-    m_VtxBuffer->Upload(std::as_bytes(std::span{Vertices}));
-    m_IdxBuffer->Upload(std::as_bytes(std::span{Indices}));
+    m_VtxBuffer->Upload(std::as_bytes(std::span{m_Vertices}));
+    m_IdxBuffer->Upload(std::as_bytes(std::span{m_Indices}));
 
     const std::array Push{ 2.F / RenderData->DisplaySize.x,
                            2.F / RenderData->DisplaySize.y,

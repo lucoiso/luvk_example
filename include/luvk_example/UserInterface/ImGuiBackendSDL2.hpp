@@ -16,7 +16,7 @@ namespace luvk_example
         std::array<SDL_Cursor*, ImGuiMouseCursor_COUNT> m_MouseCursors{};
 
     public:
-        ImGuiBackendSDL2() = default;
+        constexpr ImGuiBackendSDL2() = default;
 
         bool Init(SDL_Window* Window);
         void Shutdown();

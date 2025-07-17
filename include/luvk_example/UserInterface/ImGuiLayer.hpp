@@ -19,7 +19,7 @@ namespace luvk_example
         std::unique_ptr<ImGuiMesh> m_Mesh{};
 
     public:
-        ImGuiLayer() = default;
+        constexpr ImGuiLayer() = default;
 
         bool Initialize(SDL_Window* Window,
                         std::shared_ptr<luvk::Renderer> const& Renderer,
@@ -32,7 +32,7 @@ namespace luvk_example
         void Render(const VkCommandBuffer& Cmd);
         bool ProcessEvent(SDL_Event const& Event) const;
 
-        inline bool IsInitialized() const
+        [[nodiscard]] constexpr bool IsInitialized() const noexcept
         {
             return m_Initialized;
         }

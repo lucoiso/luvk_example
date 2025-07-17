@@ -32,5 +32,8 @@ namespace luvk_example
         [[nodiscard]] bool Running() const noexcept;
         [[nodiscard]] bool IsKeyPressed(SDL_Keycode key) const noexcept;
         [[nodiscard]] bool LeftHeld() const noexcept;
+
+    private:
+        void InvokeCallbacks(Uint32 Type, SDL_Event const& Event);
     };
 } // namespace luvk_example

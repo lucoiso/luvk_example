@@ -31,6 +31,8 @@ namespace luvk_example
         luvk::Mesh m_Mesh{};
         std::size_t m_VtxBufferSize{0};
         std::size_t m_IdxBufferSize{0};
+        std::vector<ImDrawVert> m_Vertices{};
+        std::vector<ImDrawIdx> m_Indices{};
 
     public:
         ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,

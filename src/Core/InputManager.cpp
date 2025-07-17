@@ -40,19 +40,19 @@ void luvk_example::InputManager::ProcessEvents()
             break;
         }
 
-        auto const CallCallbacks = [this, &Event](Uint32 Type)
-        {
-            if (auto It = m_Bindings.find(Type); It != m_Bindings.end())
-            {
-                for (auto const& CallbackIt : It->second)
-                {
-                    CallbackIt(Event);
-                }
-            }
-        };
+        InvokeCallbacks(Event.type, Event);
+        InvokeCallbacks(SDL_USEREVENT, Event);
+    }
+}
 
-        CallCallbacks(Event.type);
-        CallCallbacks(SDL_USEREVENT);
+void luvk_example::InputManager::InvokeCallbacks(const Uint32 Type, SDL_Event const& Event)
+{
+    if (auto It = m_Bindings.find(Type); It != m_Bindings.end())
+    {
+        for (auto const& CallbackIt : It->second)
+        {
+            CallbackIt(Event);
+        }
     }
 }
 
