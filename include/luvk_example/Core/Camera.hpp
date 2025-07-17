@@ -4,19 +4,23 @@
 
 #pragma once
 
-#include <glm/glm.hpp>
 #include "luvk_example/Core/InputManager.hpp"
+#include <glm/glm.hpp>
 
-namespace luvk_example
-{
-    class Camera
-    {
-        glm::vec3 m_Position{0.F, 0.F, 2.F};
-        float m_Speed{2.F};
+namespace luvk_example {
+/** Camera basica para movimentacao na cena */
+class Camera {
+  glm::vec3 m_Position{0.F, 0.F, 2.F};
+  float m_Speed{2.F};
 
-    public:
-        constexpr Camera() = default;
-        void Update(float DeltaTime, luvk_example::InputManager const& Input);
-        [[nodiscard]] glm::mat4 GetViewMatrix() const;
-    };
+public:
+  /** Construtor padrao */
+  constexpr Camera() = default;
+
+  /** Atualiza a camera com o tempo decorrido */
+  void Update(float DeltaTime, luvk_example::InputManager const &Input);
+
+  /** Retorna a matriz de visualizacao */
+  [[nodiscard]] glm::mat4 GetViewMatrix() const;
+};
 } // namespace luvk_example

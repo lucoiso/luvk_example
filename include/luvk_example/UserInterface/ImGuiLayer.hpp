@@ -7,34 +7,43 @@
 #include "luvk_example/UserInterface/ImGuiBackendSDL2.hpp"
 #include "luvk_example/UserInterface/ImGuiMesh.hpp"
 
-#include <memory>
 #include <SDL2/SDL.h>
+#include <memory>
 
-namespace luvk_example
-{
-    class ImGuiLayer
-    {
-        ImGuiBackendSDL2 m_SdlBackend{};
-        std::unique_ptr<ImGuiMesh> m_Mesh{};
-        bool m_Initialized{false};
+namespace luvk_example {
+/** Camada responsavel pela interface ImGui */
+class ImGuiLayer {
+  ImGuiBackendSDL2 m_SdlBackend{};
+  std::unique_ptr<ImGuiMesh> m_Mesh{};
+  bool m_Initialized{false};
 
-    public:
-        constexpr ImGuiLayer() = default;
+public:
+  /** Construtor */
+  constexpr ImGuiLayer() = default;
 
-        bool Initialize(SDL_Window* Window,
-                        std::shared_ptr<luvk::Renderer> const& Renderer,
-                        std::shared_ptr<luvk::MeshRegistry> const& Registry,
-                        std::shared_ptr<luvk::Device> const& Device,
-                        std::shared_ptr<luvk::SwapChain> const& Swap,
-                        std::shared_ptr<luvk::Memory> const& Memory);
-        void Shutdown();
-        void NewFrame(float DeltaTime) const;
-        void Render(const VkCommandBuffer& Cmd);
-        bool ProcessEvent(SDL_Event const& Event) const;
+  /** Inicializa os componentes da camada */
+  bool Initialize(SDL_Window *Window,
+                  std::shared_ptr<luvk::Renderer> const &Renderer,
+                  std::shared_ptr<luvk::MeshRegistry> const &Registry,
+                  std::shared_ptr<luvk::Device> const &Device,
+                  std::shared_ptr<luvk::SwapChain> const &Swap,
+                  std::shared_ptr<luvk::Memory> const &Memory);
 
-        [[nodiscard]] constexpr bool IsInitialized() const noexcept
-        {
-            return m_Initialized;
-        }
-    };
+  /** Finaliza e libera recursos */
+  void Shutdown();
+
+  /** Atualiza ImGui para um novo frame */
+  void NewFrame(float DeltaTime) const;
+
+  /** Renderiza os elementos de ImGui */
+  void Render(const VkCommandBuffer &Cmd);
+
+  /** Encaminha evento para o backend */
+  bool ProcessEvent(SDL_Event const &Event) const;
+
+  /** Indica se a camada foi inicializada */
+  [[nodiscard]] constexpr bool IsInitialized() const noexcept {
+    return m_Initialized;
+  }
+};
 } // namespace luvk_example
