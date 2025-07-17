@@ -194,10 +194,6 @@ std::int32_t main()
             {
                 GuiLayer.NewFrame(DeltaTime);
 
-                ImGui::Begin("Example");
-                ImGui::Text("Placeholder");
-                ImGui::End();
-
                 Renderer->EnqueueCommand([&GuiLayer](const VkCommandBuffer& Cmd)
                 {
                     GuiLayer.Render(Cmd);

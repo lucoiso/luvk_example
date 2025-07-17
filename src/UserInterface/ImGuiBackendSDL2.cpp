@@ -15,6 +15,7 @@ static void UpdateModifiers(SDL_Keymod Mods);
 bool ImGuiBackendSDL2::Init(SDL_Window* Window)
 {
     m_Window = Window;
+    
     ImGuiIO& GuiIO = ImGui::GetIO();
     GuiIO.BackendPlatformName = "ImGuiBackendSDL2";
     GuiIO.BackendFlags |= ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;

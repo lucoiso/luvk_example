@@ -22,6 +22,12 @@ bool ImGuiLayer::Initialize(SDL_Window* Window,
     m_Mesh = std::make_unique<ImGuiMesh>(Registry, Device, Swap, Memory);
     m_Initialized = IsOk && static_cast<bool>(m_Mesh);
 
+    if (m_Initialized)
+    {
+        ImGuiIO& IO = ImGui::GetIO();
+        IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    }
+
     return m_Initialized;
 }
 
@@ -49,6 +55,8 @@ void ImGuiLayer::NewFrame(const float DeltaTime) const
         {
             m_Mesh->NewFrame();
         }
+
+        ImGui::ShowDemoWindow();
     }
 }
 
