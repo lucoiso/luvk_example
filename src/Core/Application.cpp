@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Application.hpp"
+#include "luvk_example/Core/Application.hpp"
 #include <SDL2/SDL_vulkan.h>
 #include <execution>
 #include <vector>
@@ -123,7 +123,7 @@ bool luvk_example::Application::Initialize()
     constexpr std::uint32_t ImageCount = 3U;
     m_SwapChainModule->CreateSwapChain(m_DeviceModule,
                                        m_MemoryModule,
-                                       luvk::SwapChain::CreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}},
+                                       luvk::SwapChainCreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}},
                                        nullptr);
 
     const auto GraphicsQueue = m_DeviceModule->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();

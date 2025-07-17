@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Triangle.hpp"
+#include "luvk_example/Meshes/Triangle.hpp"
 #include <random>
 #include <glm/gtc/constants.hpp>
 #include <array>
@@ -94,7 +94,7 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
     auto TriComp = luvk::CompileGLSLToSPIRV(TriCompSrc, EShLangCompute);
 
     const VkExtent2D Extent = Swap->GetExtent();
-    const std::array Formats{Swap->m_Arguments.Format};
+    const std::array Formats{Swap->GetCreationArguments().Format};
 
     constexpr std::array TriBindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
                                      VkVertexInputBindingDescription{1, sizeof(Particle), VK_VERTEX_INPUT_RATE_INSTANCE}};
@@ -131,13 +131,13 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                                               .PushConstants = std::array{CompPC}});
 
     m_ParticleBuffer->CreateBuffer(Memory,
-                                   {.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                    .Size = sizeof(Particle),
+                                   {.Size = sizeof(Particle),
+                                    .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                     .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
     m_ComputeUBO->CreateBuffer(Memory,
-                               {.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                                .Size = sizeof(float),
+                               {.Size = sizeof(float),
+                                .Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                 .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
     m_DescriptorSet->UpdateBuffer(m_Device, m_ParticleBuffer->GetHandle(), m_ParticleBuffer->GetSize(), 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -180,7 +180,7 @@ void luvk_example::Triangle::Update(const float DeltaTime) const
     m_Registry->UpdateUniform(m_ComputeIndex, std::as_bytes(std::span{&DeltaTime, 1}));
 }
 
-void luvk_example::Triangle::AddInstance(const glm::vec2 Position)
+void luvk_example::Triangle::AddInstance(glm::vec2 const &Position)
 {
     static std::mt19937 Generator{std::random_device{}()};
     static std::uniform_real_distribution Distribution(0.F, 1.F);
@@ -201,8 +201,8 @@ void luvk_example::Triangle::AddInstance(const glm::vec2 Position)
     if (const VkDeviceSize Required = sizeof(Particle) * ParticlesSize;
         Required > m_ParticleBuffer->GetSize())
     {
-        m_ParticleBuffer->RecreateBuffer({.Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                          .Size = Required,
+        m_ParticleBuffer->RecreateBuffer({.Size = Required,
+                                          .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                           .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
         m_DescriptorSet->UpdateBuffer(m_Device, m_ParticleBuffer->GetHandle(), m_ParticleBuffer->GetSize(), 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
@@ -214,9 +214,4 @@ void luvk_example::Triangle::AddInstance(const glm::vec2 Position)
 
     GraphicsEntry.InstanceCount = static_cast<std::uint32_t>(ParticlesSize);
     ComputeEntry.DispatchX = static_cast<std::uint32_t>((ParticlesSize + 63) / 64);
-}
-
-luvk::Mesh& luvk_example::Triangle::GetMesh() noexcept
-{
-    return m_Mesh;
 }

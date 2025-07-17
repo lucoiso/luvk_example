@@ -4,20 +4,21 @@
 
 #pragma once
 
-#include <memory>
 #include <glm/glm.hpp>
-#include <luvk/Core/MeshRegistry.hpp>
+#include <luvk/Resources/Buffer.hpp>
+#include <luvk/Resources/DescriptorSet.hpp>
+#include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Modules/DescriptorPool.hpp>
+#include <luvk/Modules/Device.hpp>
+#include <luvk/Modules/Memory.hpp>
+#include <luvk/Modules/MeshRegistry.hpp>
+#include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Types/Mesh.hpp>
-#include <luvk/Core/Pipeline.hpp>
-#include <luvk/Core/Device.hpp>
-#include <luvk/Core/SwapChain.hpp>
-#include <luvk/Core/DescriptorPool.hpp>
-#include <luvk/Core/DescriptorSet.hpp>
-#include <luvk/Core/Buffer.hpp>
-#include <luvk/Core/Memory.hpp>
+#include <memory>
 
 namespace luvk_example
 {
+    /** Triangle particle mesh */
     class Triangle
     {
         struct alignas(16) Particle
@@ -44,12 +45,19 @@ namespace luvk_example
         std::vector<Particle> m_Particles{};
 
     public:
+        /** Constructor */
         Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                  const std::shared_ptr<luvk::Device>& Device,
                  const std::shared_ptr<luvk::SwapChain>& Swap,
                  const std::shared_ptr<luvk::Memory>& Memory);
+
+        /** Updates particles */
         void Update(float DeltaTime) const;
-        void AddInstance(glm::vec2 Position);
-        [[nodiscard]] luvk::Mesh& GetMesh() noexcept;
+
+        /** Adds a new particle */
+        void AddInstance(glm::vec2 const& Position);
+
+        /** Resulting mesh */
+        [[nodiscard]] constexpr luvk::Mesh& GetMesh() noexcept;
     };
 } // namespace luvk_example

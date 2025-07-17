@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Cube.hpp"
+#include "luvk_example/Meshes/Cube.hpp"
 #include <glm/gtc/matrix_transform.hpp>
 #include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
@@ -95,7 +95,7 @@ luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
     auto CubeFrag = luvk::CompileGLSLToSPIRV(CubeFragSrc, EShLangFragment);
 
     const VkExtent2D Extent = Swap->GetExtent();
-    const std::array Formats{Swap->m_Arguments.Format};
+    const std::array Formats{Swap->GetCreationArguments().Format};
 
     constexpr VkPushConstantRange CubePC{VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(glm::mat4)};
 
@@ -112,8 +112,8 @@ luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
                                     .CullMode = VK_CULL_MODE_NONE});
 
     m_UBO->CreateBuffer(Memory,
-                        {.Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-                         .Size = sizeof(glm::mat4),
+                        {.Size = sizeof(glm::mat4),
+                         .Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                          .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
     m_Index = m_Registry->RegisterMesh({},
@@ -132,7 +132,7 @@ luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
 
 void luvk_example::Cube::Update(const float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const
 {
-    static float Elapsed = 0.F;
+    static constinit float Elapsed = 0.F;
     Elapsed += DeltaTime;
 
     const glm::mat4 Model = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));
@@ -144,9 +144,4 @@ void luvk_example::Cube::Update(const float DeltaTime, glm::mat4 const& View, gl
     } Pc{Mvp};
 
     m_Registry->UpdateUniform(m_Index, std::as_bytes(std::span{&Pc, 1}));
-}
-
-luvk::Mesh& luvk_example::Cube::GetMesh() noexcept
-{
-    return m_Mesh;
 }
