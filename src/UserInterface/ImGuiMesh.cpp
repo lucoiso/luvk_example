@@ -3,14 +3,12 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/UserInterface/ImGuiMesh.hpp"
-#include <luvk/Libraries/ShaderCompiler.hpp>
-#include <luvk/Libraries/VulkanHelpers.hpp>
-#include <luvk/Types/Material.hpp>
-#include <luvk/Resources/Buffer.hpp>
 #include <array>
 #include <vector>
+#include <luvk/Libraries/ShaderCompiler.hpp>
+#include <luvk/Resources/Buffer.hpp>
+#include <luvk/Types/Material.hpp>
 #include <volk/volk.h>
-#include <stdexcept>
 
 using namespace luvk_example;
 

@@ -3,9 +3,9 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Meshes/Triangle.hpp"
+#include <array>
 #include <random>
 #include <glm/gtc/constants.hpp>
-#include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Types/Material.hpp>
 
@@ -76,7 +76,7 @@ namespace
     constexpr std::array<std::uint16_t, 3> TriIndices{{0, 1, 2}};
 } // namespace
 
-luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
+Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                                  const std::shared_ptr<luvk::Device>& Device,
                                  const std::shared_ptr<luvk::SwapChain>& Swap,
                                  const std::shared_ptr<luvk::Memory>& Memory)
@@ -175,12 +175,12 @@ luvk_example::Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
     m_Mesh = luvk::Mesh(m_Registry, m_GraphicsIndex);
 }
 
-void luvk_example::Triangle::Update(const float DeltaTime) const
+void Triangle::Update(const float DeltaTime) const
 {
     m_Registry->UpdateUniform(m_ComputeIndex, std::as_bytes(std::span{&DeltaTime, 1}));
 }
 
-void luvk_example::Triangle::AddInstance(glm::vec2 const &Position)
+void Triangle::AddInstance(glm::vec2 const &Position)
 {
     static std::mt19937 Generator{std::random_device{}()};
     static std::uniform_real_distribution Distribution(0.F, 1.F);

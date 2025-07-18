@@ -5,23 +5,21 @@
 #pragma once
 
 #include "luvk_example/Core/InputManager.hpp"
-#include <SDL2/SDL.h>
 
 #include <memory>
-
-#include <luvk/Modules/MeshRegistry.hpp>
 #include <luvk/Modules/CommandPool.hpp>
 #include <luvk/Modules/Debug.hpp>
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Modules/Memory.hpp>
+#include <luvk/Modules/MeshRegistry.hpp>
 #include <luvk/Modules/Renderer.hpp>
 #include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Modules/Synchronization.hpp>
 #include <luvk/Modules/ThreadPool.hpp>
+#include <SDL2/SDL.h>
 
 namespace luvk_example
 {
-    /** Main application class */
     class Application
     {
         InputManager m_Input;
@@ -39,70 +37,56 @@ namespace luvk_example
         std::shared_ptr<luvk::ThreadPool> m_ThreadPoolModule{};
 
     public:
-        /** Constructor */
-        Application(std::uint32_t Width, std::uint32_t Height);
-
-        /** Destructor */
+        explicit Application(std::uint32_t Width, std::uint32_t Height);
         ~Application();
 
-        /** Initializes all modules */
         bool Initialize();
 
-        /** Access to the input manager */
         [[nodiscard]] constexpr InputManager& GetInput() noexcept
         {
             return m_Input;
         }
 
-        /** Renderer used by the application */
         [[nodiscard]] constexpr std::shared_ptr<luvk::Renderer> const& GetRenderer() const noexcept
         {
             return m_Renderer;
         }
 
-        /** Vulkan device */
         [[nodiscard]] constexpr std::shared_ptr<luvk::Device> const& GetDevice() const noexcept
         {
             return m_DeviceModule;
         }
 
-        /** Swap chain */
         [[nodiscard]] constexpr std::shared_ptr<luvk::SwapChain> const& GetSwapChain() const noexcept
         {
             return m_SwapChainModule;
         }
 
-        /** Command pool */
         [[nodiscard]] constexpr std::shared_ptr<luvk::CommandPool> const& GetCommandPool() const noexcept
         {
             return m_CommandPoolModule;
         }
 
-        /** Memory module */
         [[nodiscard]] constexpr std::shared_ptr<luvk::Memory> const& GetMemory() const noexcept
         {
             return m_MemoryModule;
         }
 
-        /** Synchronization module */
         [[nodiscard]] constexpr std::shared_ptr<luvk::Synchronization> const& GetSync() const noexcept
         {
             return m_SynchronizationModule;
         }
 
-        /** Mesh registry module */
         [[nodiscard]] constexpr std::shared_ptr<luvk::MeshRegistry> const& GetMeshRegistry() const noexcept
         {
             return m_MeshRegistryModule;
         }
 
-        /** Thread pool module */
         [[nodiscard]] constexpr std::shared_ptr<luvk::ThreadPool> const& GetThreadPool() const noexcept
         {
             return m_ThreadPoolModule;
         }
 
-        /** SDL window */
         [[nodiscard]] constexpr SDL_Window* GetWindow() const noexcept
         {
             return m_Window;

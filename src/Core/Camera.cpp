@@ -7,7 +7,7 @@
 
 using namespace luvk_example;
 
-void luvk_example::Camera::Update(const float DeltaTime, InputManager const& Input)
+void Camera::Update(const float DeltaTime, InputManager const& Input)
 {
     if (Input.IsKeyPressed(SDLK_LEFT))
     {
@@ -30,7 +30,7 @@ void luvk_example::Camera::Update(const float DeltaTime, InputManager const& Inp
     }
 }
 
-glm::mat4 luvk_example::Camera::GetViewMatrix() const
+glm::mat4 Camera::GetViewMatrix() const
 {
     const glm::vec3 Target{m_Position.x, m_Position.y, m_Position.z - 1.F};
     return glm::lookAt(m_Position, Target, glm::vec3(0.F, 1.F, 0.F));

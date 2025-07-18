@@ -3,14 +3,14 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Core/Application.hpp"
-#include <SDL2/SDL_vulkan.h>
 #include <execution>
-#include <vector>
 #include <unordered_map>
+#include <vector>
+#include <SDL2/SDL_vulkan.h>
 
 using namespace luvk_example;
 
-luvk_example::Application::Application(const std::uint32_t Width, const std::uint32_t Height)
+Application::Application(const std::uint32_t Width, const std::uint32_t Height)
     :
     m_Width(Width),
     m_Height(Height)
@@ -24,7 +24,7 @@ luvk_example::Application::Application(const std::uint32_t Width, const std::uin
                                 SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 }
 
-luvk_example::Application::~Application()
+Application::~Application()
 {
     if (m_DeviceModule)
     {
@@ -38,7 +38,7 @@ luvk_example::Application::~Application()
     SDL_Quit();
 }
 
-bool luvk_example::Application::Initialize()
+bool Application::Initialize()
 {
     SDL_Window* const Window = m_Window;
     m_Renderer = std::make_shared<luvk::Renderer>();

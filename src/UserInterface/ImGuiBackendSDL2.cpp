@@ -3,9 +3,8 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/UserInterface/ImGuiBackendSDL2.hpp"
-#include <SDL2/SDL_vulkan.h>
-#include <cstdint>
 #include <imgui.h>
+#include <SDL2/SDL_vulkan.h>
 
 using namespace luvk_example;
 

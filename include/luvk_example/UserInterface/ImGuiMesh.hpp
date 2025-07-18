@@ -5,21 +5,20 @@
 #pragma once
 
 #include <imgui.h>
-#include <luvk/Resources/DescriptorSet.hpp>
-#include <luvk/Resources/Image.hpp>
-#include <luvk/Resources/Pipeline.hpp>
-#include <luvk/Resources/Sampler.hpp>
+#include <memory>
 #include <luvk/Modules/DescriptorPool.hpp>
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Modules/Memory.hpp>
 #include <luvk/Modules/MeshRegistry.hpp>
 #include <luvk/Modules/SwapChain.hpp>
+#include <luvk/Resources/DescriptorSet.hpp>
+#include <luvk/Resources/Image.hpp>
+#include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Resources/Sampler.hpp>
 #include <luvk/Types/Mesh.hpp>
-#include <memory>
 
 namespace luvk_example
 {
-    /** Mesh used to render ImGui through luvk */
     class ImGuiMesh
     {
         std::shared_ptr<luvk::MeshRegistry> m_Registry{};
@@ -41,19 +40,18 @@ namespace luvk_example
         std::vector<ImDrawIdx> m_Indices{};
 
     public:
-        /** Constructor */
-        ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
-                  std::shared_ptr<luvk::Device> Device,
-                  std::shared_ptr<luvk::SwapChain> Swap,
-                  std::shared_ptr<luvk::Memory> Memory);
+        ImGuiMesh() = delete;
+        explicit ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
+                           std::shared_ptr<luvk::Device> Device,
+                           std::shared_ptr<luvk::SwapChain> Swap,
+                           std::shared_ptr<luvk::Memory> Memory);
 
-        /** Prepares a new ImGui frame */
         void NewFrame() const;
-
-        /** Executes rendering of the draw data */
         void Render(const VkCommandBuffer& Cmd);
 
-        /** Resulting mesh for the renderer */
-        [[nodiscard]] constexpr luvk::Mesh& GetMesh() noexcept;
+        [[nodiscard]] constexpr luvk::Mesh& GetMesh() noexcept
+        {
+            return m_Mesh;
+        }
     };
 } // namespace luvk_example

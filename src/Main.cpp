@@ -10,18 +10,16 @@
 #undef main
 #endif
 
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
 #include <chrono>
 #include <thread>
-#include <array>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include "luvk_example/Core/Camera.hpp"
 #include "luvk_example/Meshes/Cube.hpp"
 #include "luvk_example/Meshes/Pixel.hpp"
 #include "luvk_example/Meshes/Triangle.hpp"
 #include "luvk_example/UserInterface/ImGuiLayer.hpp"
-#include <imgui.h>
 
 #include <luvk/Libraries/ShaderCompiler.hpp>
 

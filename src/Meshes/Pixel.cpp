@@ -52,7 +52,7 @@ namespace
     constexpr std::array<std::uint16_t, 30> PixelIndices{{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 7, 0, 7, 8, 0, 8, 9, 0, 9, 10, 0, 10, 11}};
 } // namespace
 
-luvk_example::Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
+Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
                            const std::shared_ptr<luvk::Device>& Device,
                            const std::shared_ptr<luvk::SwapChain>& Swap)
     : m_Registry(std::move(Registry)),
@@ -99,7 +99,7 @@ luvk_example::Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
     m_Mesh = luvk::Mesh(m_Registry, m_Index);
 }
 
-void luvk_example::Pixel::AddInstance(glm::vec2 const &Position)
+void Pixel::AddInstance(glm::vec2 const &Position)
 {
     luvk::MeshRegistry::InstanceInfo Instance{.XForm = {.Position = {Position.x, Position.y, 0.F}}, .Color = {1.F, 1.F, 1.F, 1.F}};
     m_Instances.push_back(std::move(Instance));

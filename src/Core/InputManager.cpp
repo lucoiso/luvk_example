@@ -6,16 +6,16 @@
 
 using namespace luvk_example;
 
-luvk_example::InputManager::InputManager() = default;
+InputManager::InputManager() = default;
 
-void luvk_example::InputManager::BindEvent(const Uint32 Type,
+void InputManager::BindEvent(const Uint32 Type,
                                            std::function<void(SDL_Event const&)> const& Callback)
 {
     auto [Iterator, Inserted] = m_Bindings.try_emplace(Type, EventCallbacks{});
     Iterator->second.push_back(Callback);
 }
 
-void luvk_example::InputManager::ProcessEvents()
+void InputManager::ProcessEvents()
 {
     SDL_Event Event;
     while (SDL_PollEvent(&Event))
@@ -52,7 +52,7 @@ void luvk_example::InputManager::ProcessEvents()
     }
 }
 
-void luvk_example::InputManager::InvokeCallbacks(const Uint32 Type, SDL_Event const& Event)
+void InputManager::InvokeCallbacks(const Uint32 Type, SDL_Event const& Event)
 {
     if (auto It = m_Bindings.find(Type); It != m_Bindings.end())
     {
@@ -63,7 +63,7 @@ void luvk_example::InputManager::InvokeCallbacks(const Uint32 Type, SDL_Event co
     }
 }
 
-bool luvk_example::InputManager::IsKeyPressed(const SDL_Keycode key) const noexcept
+bool InputManager::IsKeyPressed(const SDL_Keycode key) const noexcept
 {
     return m_PressedKeys.contains(key);
 }

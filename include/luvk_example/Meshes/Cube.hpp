@@ -4,18 +4,17 @@
 
 #pragma once
 
+#include <memory>
 #include <glm/glm.hpp>
-#include <luvk/Resources/Buffer.hpp>
-#include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Modules/MeshRegistry.hpp>
 #include <luvk/Modules/SwapChain.hpp>
+#include <luvk/Resources/Buffer.hpp>
+#include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Types/Mesh.hpp>
-#include <memory>
 
 namespace luvk_example
 {
-    /** Simple cube mesh */
     class Cube
     {
         std::shared_ptr<luvk::MeshRegistry> m_Registry{};
@@ -25,16 +24,17 @@ namespace luvk_example
         luvk::Mesh m_Mesh{};
 
     public:
-        /** Cube constructor */
-        Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
-             const std::shared_ptr<luvk::Device>& Device,
-             const std::shared_ptr<luvk::SwapChain>& Swap,
-             const std::shared_ptr<luvk::Memory>& Memory);
+        Cube() = delete;
+        explicit Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
+                      const std::shared_ptr<luvk::Device>& Device,
+                      const std::shared_ptr<luvk::SwapChain>& Swap,
+                      const std::shared_ptr<luvk::Memory>& Memory);
 
-        /** Updates uniforms */
         void Update(float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const;
 
-        /** Mesh handle for registry */
-        [[nodiscard]] constexpr luvk::Mesh& GetMesh() noexcept;
+        [[nodiscard]] constexpr luvk::Mesh& GetMesh() noexcept
+        {
+            return m_Mesh;
+        }
     };
 } // namespace luvk_example

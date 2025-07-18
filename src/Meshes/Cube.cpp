@@ -3,8 +3,8 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Meshes/Cube.hpp"
-#include <glm/gtc/matrix_transform.hpp>
 #include <array>
+#include <glm/gtc/matrix_transform.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 
 using namespace luvk_example;
@@ -83,7 +83,7 @@ namespace
                                     })";
 } // namespace
 
-luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
+Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
                          const std::shared_ptr<luvk::Device>& Device,
                          const std::shared_ptr<luvk::SwapChain>& Swap,
                          const std::shared_ptr<luvk::Memory>& Memory)
@@ -130,7 +130,7 @@ luvk_example::Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
     m_Mesh = luvk::Mesh(m_Registry, m_Index);
 }
 
-void luvk_example::Cube::Update(const float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const
+void Cube::Update(const float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const
 {
     static constinit float Elapsed = 0.F;
     Elapsed += DeltaTime;
