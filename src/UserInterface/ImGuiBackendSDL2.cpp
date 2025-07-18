@@ -14,7 +14,7 @@ static void UpdateModifiers(SDL_Keymod Mods);
 bool ImGuiBackendSDL2::Init(SDL_Window* Window)
 {
     m_Window = Window;
-    
+
     ImGuiIO& GuiIO = ImGui::GetIO();
     GuiIO.BackendPlatformName = "ImGuiBackendSDL2";
     GuiIO.BackendFlags |= ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
@@ -72,7 +72,9 @@ void ImGuiBackendSDL2::NewFrame() const
         }
         else
         {
-            SDL_Cursor* const Cursor = m_MouseCursors[ImgCursor] ? m_MouseCursors[ImgCursor] : m_MouseCursors[ImGuiMouseCursor_Arrow];
+            SDL_Cursor* const Cursor = m_MouseCursors[ImgCursor]
+                                           ? m_MouseCursors[ImgCursor]
+                                           : m_MouseCursors[ImGuiMouseCursor_Arrow];
             SDL_SetCursor(Cursor);
             SDL_ShowCursor(SDL_TRUE);
         }

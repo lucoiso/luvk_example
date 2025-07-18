@@ -84,9 +84,9 @@ namespace
 } // namespace
 
 Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
-                         const std::shared_ptr<luvk::Device>& Device,
-                         const std::shared_ptr<luvk::SwapChain>& Swap,
-                         const std::shared_ptr<luvk::Memory>& Memory)
+           const std::shared_ptr<luvk::Device>& Device,
+           const std::shared_ptr<luvk::SwapChain>& Swap,
+           const std::shared_ptr<luvk::Memory>& Memory)
     : m_Registry(std::move(Registry)),
       m_Pipeline(std::make_shared<luvk::Pipeline>()),
       m_UBO(std::make_shared<luvk::Buffer>())

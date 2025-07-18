@@ -77,9 +77,9 @@ namespace
 } // namespace
 
 Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
-                                 const std::shared_ptr<luvk::Device>& Device,
-                                 const std::shared_ptr<luvk::SwapChain>& Swap,
-                                 const std::shared_ptr<luvk::Memory>& Memory)
+                   const std::shared_ptr<luvk::Device>& Device,
+                   const std::shared_ptr<luvk::SwapChain>& Swap,
+                   const std::shared_ptr<luvk::Memory>& Memory)
     : m_Registry(std::move(Registry)),
       m_GraphicsPipeline(std::make_shared<luvk::Pipeline>()),
       m_ComputePipeline(std::make_shared<luvk::Pipeline>()),
@@ -180,7 +180,7 @@ void Triangle::Update(const float DeltaTime) const
     m_Registry->UpdateUniform(m_ComputeIndex, std::as_bytes(std::span{&DeltaTime, 1}));
 }
 
-void Triangle::AddInstance(glm::vec2 const &Position)
+void Triangle::AddInstance(glm::vec2 const& Position)
 {
     static std::mt19937 Generator{std::random_device{}()};
     static std::uniform_real_distribution Distribution(0.F, 1.F);

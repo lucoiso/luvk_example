@@ -9,7 +9,7 @@ using namespace luvk_example;
 InputManager::InputManager() = default;
 
 void InputManager::BindEvent(const Uint32 Type,
-                                           std::function<void(SDL_Event const&)> const& Callback)
+                             std::function<void(SDL_Event const&)> const& Callback)
 {
     auto [Iterator, Inserted] = m_Bindings.try_emplace(Type, EventCallbacks{});
     Iterator->second.push_back(Callback);
@@ -54,7 +54,8 @@ void InputManager::ProcessEvents()
 
 void InputManager::InvokeCallbacks(const Uint32 Type, SDL_Event const& Event)
 {
-    if (auto It = m_Bindings.find(Type); It != m_Bindings.end())
+    if (auto It = m_Bindings.find(Type);
+        It != m_Bindings.end())
     {
         for (auto const& CallbackIt : It->second)
         {

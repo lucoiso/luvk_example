@@ -53,8 +53,8 @@ namespace
 } // namespace
 
 Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
-                           const std::shared_ptr<luvk::Device>& Device,
-                           const std::shared_ptr<luvk::SwapChain>& Swap)
+             const std::shared_ptr<luvk::Device>& Device,
+             const std::shared_ptr<luvk::SwapChain>& Swap)
     : m_Registry(std::move(Registry)),
       m_Pipeline(std::make_shared<luvk::Pipeline>())
 {
@@ -99,7 +99,7 @@ Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
     m_Mesh = luvk::Mesh(m_Registry, m_Index);
 }
 
-void Pixel::AddInstance(glm::vec2 const &Position)
+void Pixel::AddInstance(glm::vec2 const& Position)
 {
     luvk::MeshRegistry::InstanceInfo Instance{.XForm = {.Position = {Position.x, Position.y, 0.F}}, .Color = {1.F, 1.F, 1.F, 1.F}};
     m_Instances.push_back(std::move(Instance));

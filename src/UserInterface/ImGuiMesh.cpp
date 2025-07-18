@@ -111,8 +111,9 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
 
     m_FontImage->Upload(Staging);
 
-    m_FontSampler->CreateSampler(m_Device, {.Filter = VK_FILTER_LINEAR,
-                                            .AddressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});
+    m_FontSampler->CreateSampler(m_Device,
+                                 {.Filter = VK_FILTER_LINEAR,
+                                  .AddressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});
 
     m_FontSet->UpdateImage(m_Device, m_FontImage->GetView(), m_FontSampler->GetHandle(), 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     IO.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_FontSet->GetHandle()));
@@ -229,8 +230,8 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
     m_VtxBuffer->Upload(std::as_bytes(std::span{m_Vertices}));
     m_IdxBuffer->Upload(std::as_bytes(std::span{m_Indices}));
 
-    const std::array Push{ 2.F / RenderData->DisplaySize.x,
-                           2.F / RenderData->DisplaySize.y,
+    const std::array Push{2.F / RenderData->DisplaySize.x,
+                          2.F / RenderData->DisplaySize.y,
                           -1.F - RenderData->DisplayPos.x * (2.F / RenderData->DisplaySize.x),
                           -1.F - RenderData->DisplayPos.y * (2.F / RenderData->DisplaySize.y)};
 
