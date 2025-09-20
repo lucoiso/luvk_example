@@ -5,7 +5,6 @@
 #pragma once
 
 #include "luvk_example/Core/InputManager.hpp"
-
 #include <memory>
 #include <luvk/Modules/CommandPool.hpp>
 #include <luvk/Modules/Debug.hpp>

@@ -56,7 +56,7 @@ Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
              const std::shared_ptr<luvk::Device>& Device,
              const std::shared_ptr<luvk::SwapChain>& Swap)
     : m_Registry(std::move(Registry)),
-      m_Pipeline(std::make_shared<luvk::Pipeline>())
+      m_Pipeline(std::make_shared<luvk::Pipeline>(Device))
 {
     auto TriVert = luvk::CompileGLSLToSPIRV(TriVertSrc, EShLangVertex);
     auto TriFrag = luvk::CompileGLSLToSPIRV(TriFragSrc, EShLangFragment);
@@ -72,8 +72,7 @@ Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
                               VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::MeshInstance, Angle)},
                               VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::MeshInstance, Color)}};
 
-    m_Pipeline->CreateGraphicsPipeline(Device,
-                                       {.Extent = Extent,
+    m_Pipeline->CreateGraphicsPipeline({.Extent = Extent,
                                         .ColorFormats = Formats,
                                         .RenderPass = Swap->GetRenderPass(),
                                         .Subpass = 0,
@@ -93,10 +92,9 @@ Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
                                        nullptr,
                                        nullptr,
                                        {},
-                                       m_Pipeline,
-                                       Device);
+                                       m_Pipeline);
 
-    m_Mesh = luvk::Mesh(m_Registry, m_Index);
+    m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_Index);
 }
 
 void Pixel::AddInstance(glm::vec2 const& Position)

@@ -81,12 +81,12 @@ Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                    const std::shared_ptr<luvk::SwapChain>& Swap,
                    const std::shared_ptr<luvk::Memory>& Memory)
     : m_Registry(std::move(Registry)),
-      m_GraphicsPipeline(std::make_shared<luvk::Pipeline>()),
-      m_ComputePipeline(std::make_shared<luvk::Pipeline>()),
-      m_ParticleBuffer(std::make_shared<luvk::Buffer>()),
-      m_ComputeUBO(std::make_shared<luvk::Buffer>()),
-      m_DescriptorPool(std::make_shared<luvk::DescriptorPool>()),
-      m_DescriptorSet(std::make_shared<luvk::DescriptorSet>()),
+      m_GraphicsPipeline(std::make_shared<luvk::Pipeline>(Device)),
+      m_ComputePipeline(std::make_shared<luvk::Pipeline>(Device)),
+      m_ParticleBuffer(std::make_shared<luvk::Buffer>(Device, Memory)),
+      m_ComputeUBO(std::make_shared<luvk::Buffer>(Device, Memory)),
+      m_DescriptorPool(std::make_shared<luvk::DescriptorPool>(Device)),
+      m_DescriptorSet(std::make_shared<luvk::DescriptorSet>(Device, m_DescriptorPool, Memory)),
       m_Device(Device)
 {
     auto TriVert = luvk::CompileGLSLToSPIRV(TriVertSrc, EShLangVertex);
@@ -107,12 +107,11 @@ Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
     constexpr VkDescriptorSetLayoutBinding PartBinding{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
     constexpr VkDescriptorPoolSize PoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
 
-    m_DescriptorSet->CreateLayout(Device, {.Bindings = std::array{PartBinding}});
-    m_DescriptorPool->CreateDescriptorPool(Device, 1, std::array{PoolSize});
-    m_DescriptorSet->Allocate(m_DescriptorPool);
+    m_DescriptorSet->CreateLayout({.Bindings = std::array{PartBinding}});
+    m_DescriptorPool->CreateDescriptorPool(1, std::array{PoolSize});
+    m_DescriptorSet->Allocate();
 
-    m_GraphicsPipeline->CreateGraphicsPipeline(Device,
-                                               {.Extent = Extent,
+    m_GraphicsPipeline->CreateGraphicsPipeline({.Extent = Extent,
                                                 .ColorFormats = Formats,
                                                 .RenderPass = Swap->GetRenderPass(),
                                                 .Subpass = 0,
@@ -125,18 +124,17 @@ Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                                                 .CullMode = VK_CULL_MODE_NONE});
 
     constexpr VkPushConstantRange CompPC{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float)};
-    m_ComputePipeline->CreateComputePipeline(Device,
-                                             {.ComputeShader = TriComp,
+    m_ComputePipeline->CreateComputePipeline({.ComputeShader = TriComp,
                                               .SetLayouts = std::array{m_DescriptorSet->GetLayout()},
                                               .PushConstants = std::array{CompPC}});
 
-    m_ParticleBuffer->CreateBuffer(Memory,
-                                   {.Size = sizeof(Particle),
+    m_ParticleBuffer->CreateBuffer({.Name = "Particle VTX",
+                                    .Size = sizeof(Particle),
                                     .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                     .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
-    m_ComputeUBO->CreateBuffer(Memory,
-                               {.Size = sizeof(float),
+    m_ComputeUBO->CreateBuffer({.Name = "Particle UBO",
+                                .Size = sizeof(float),
                                 .Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                                 .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
@@ -150,8 +148,7 @@ Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                                                nullptr,
                                                nullptr,
                                                {},
-                                               m_GraphicsPipeline,
-                                               Device);
+                                               m_GraphicsPipeline);
 
     m_ComputeIndex = m_Registry->RegisterMesh({},
                                               {},
@@ -162,7 +159,6 @@ Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                                               m_ComputeUBO,
                                               {},
                                               m_ComputePipeline,
-                                              Device,
                                               1);
 
     auto& gfxEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_GraphicsIndex]);
@@ -172,7 +168,7 @@ Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
     const auto& compEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_ComputeIndex]);
     compEntry.MaterialPtr->SetDescriptor(m_DescriptorSet);
 
-    m_Mesh = luvk::Mesh(m_Registry, m_GraphicsIndex);
+    m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_GraphicsIndex);
 }
 
 void Triangle::Update(const float DeltaTime) const
@@ -201,7 +197,8 @@ void Triangle::AddInstance(glm::vec2 const& Position)
     if (const VkDeviceSize Required = sizeof(Particle) * ParticlesSize;
         Required > m_ParticleBuffer->GetSize())
     {
-        m_ParticleBuffer->RecreateBuffer({.Size = Required,
+        m_ParticleBuffer->RecreateBuffer({.Name = "Instance VTX",
+                                          .Size = Required,
                                           .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                           .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 

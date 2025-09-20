@@ -39,7 +39,7 @@ Application::~Application()
 bool Application::Initialize()
 {
     SDL_Window* const Window = m_Window;
-    m_Renderer = std::make_shared<luvk::Renderer>();
+    m_Renderer = luvk::CreateModule<luvk::Renderer>();
     m_Renderer->PreInitializeRenderer();
 
     constexpr luvk::Renderer::InstanceCreationArguments InstArguments{.ApplicationName = "LuVK Example",
@@ -47,23 +47,25 @@ bool Application::Initialize()
                                                                       .ApplicationVersion = VK_MAKE_VERSION(0U, 0U, 1U),
                                                                       .EngineVersion = VK_MAKE_VERSION(0U, 0U, 1U)};
 
-    m_DebugModule = std::make_shared<luvk::Debug>();
-    m_SwapChainModule = std::make_shared<luvk::SwapChain>();
-    m_DeviceModule = std::make_shared<luvk::Device>();
-    m_MemoryModule = std::make_shared<luvk::Memory>();
-    m_CommandPoolModule = std::make_shared<luvk::CommandPool>();
-    m_SynchronizationModule = std::make_shared<luvk::Synchronization>();
-    m_MeshRegistryModule = std::make_shared<luvk::MeshRegistry>();
-    m_ThreadPoolModule = std::make_shared<luvk::ThreadPool>();
+    constexpr std::uint32_t ImageCount = 3U;
 
-    m_Renderer->RegisterModules(luvk::Vector<std::shared_ptr<luvk::IRenderModule>>{m_DebugModule,
-                                                                                   m_DeviceModule,
-                                                                                   m_MemoryModule,
-                                                                                   m_SwapChainModule,
-                                                                                   m_CommandPoolModule,
-                                                                                   m_SynchronizationModule,
-                                                                                   m_MeshRegistryModule,
-                                                                                   m_ThreadPoolModule});
+    m_DebugModule = luvk::CreateModule<luvk::Debug>(m_Renderer);
+    m_DeviceModule = luvk::CreateModule<luvk::Device>(m_Renderer);
+    m_MemoryModule = luvk::CreateModule<luvk::Memory>(m_Renderer, m_DeviceModule);
+    m_SwapChainModule = luvk::CreateModule<luvk::SwapChain>(m_DeviceModule, m_MemoryModule);
+    m_CommandPoolModule = luvk::CreateModule<luvk::CommandPool>(m_DeviceModule);
+    m_SynchronizationModule = luvk::CreateModule<luvk::Synchronization>(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule, ImageCount);
+    m_MeshRegistryModule = luvk::CreateModule<luvk::MeshRegistry>(m_DeviceModule, m_MemoryModule);
+    m_ThreadPoolModule = luvk::CreateModule<luvk::ThreadPool>();
+
+    m_Renderer->RegisterModules(luvk::Vector<luvk::RenderModulePtr>{m_DebugModule,
+                                                                    m_DeviceModule,
+                                                                    m_MemoryModule,
+                                                                    m_SwapChainModule,
+                                                                    m_CommandPoolModule,
+                                                                    m_SynchronizationModule,
+                                                                    m_MeshRegistryModule,
+                                                                    m_ThreadPoolModule});
 
     std::uint32_t NumExtensions = 0U;
     if (SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, nullptr))
@@ -117,22 +119,18 @@ bool Application::Initialize()
                   });
 
     m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), &MeshShaderFeatures);
-    m_MemoryModule->InitializeAllocator(m_DeviceModule, VulkanInstance, 0);
+    m_MemoryModule->InitializeAllocator(0);
 
-    constexpr std::uint32_t ImageCount = 3U;
-    m_SwapChainModule->CreateSwapChain(m_DeviceModule,
-                                       m_MemoryModule,
-                                       luvk::SwapChainCreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}},
+    m_SwapChainModule->CreateSwapChain(luvk::SwapChainCreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}},
                                        nullptr);
 
     const auto GraphicsQueue = m_DeviceModule->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
-    m_CommandPoolModule->CreateCommandPool(m_DeviceModule, GraphicsQueue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    m_CommandPoolModule->CreateCommandPool(GraphicsQueue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-    m_MeshRegistryModule->Initialize(m_MemoryModule);
     m_ThreadPoolModule->Start(2); // std::thread::hardware_concurrency() if rendering multiple objects
 
-    m_SynchronizationModule->Initialize(m_DeviceModule, ImageCount);
-    m_SynchronizationModule->SetupFrames(m_SwapChainModule, m_CommandPoolModule);
+    m_SynchronizationModule->Initialize();
+    m_SynchronizationModule->SetupFrames();
 
     return true;
 }

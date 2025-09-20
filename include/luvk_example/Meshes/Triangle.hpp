@@ -40,7 +40,7 @@ namespace luvk_example
         std::shared_ptr<luvk::Device> m_Device{};
         std::size_t m_GraphicsIndex{};
         std::size_t m_ComputeIndex{};
-        luvk::Mesh m_Mesh{};
+        std::shared_ptr<luvk::Mesh> m_Mesh{};
         std::vector<Particle> m_Particles{};
 
     public:
@@ -52,7 +52,7 @@ namespace luvk_example
         void Update(float DeltaTime) const;
         void AddInstance(glm::vec2 const& Position);
 
-        [[nodiscard]] constexpr luvk::Mesh& GetMesh() noexcept
+        [[nodiscard]] constexpr const std::shared_ptr<luvk::Mesh>& GetMesh() const noexcept
         {
             return m_Mesh;
         }

@@ -2,6 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
+#include <cstdint>
 #include "luvk_example/UserInterface/ImGuiBackendSDL2.hpp"
 #include <imgui.h>
 #include <SDL2/SDL_vulkan.h>

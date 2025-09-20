@@ -19,7 +19,7 @@ namespace luvk_example
         std::shared_ptr<luvk::MeshRegistry> m_Registry{};
         std::shared_ptr<luvk::Pipeline> m_Pipeline{};
         std::size_t m_Index{};
-        luvk::Mesh m_Mesh{};
+        std::shared_ptr<luvk::Mesh> m_Mesh{};
         std::vector<luvk::MeshRegistry::InstanceInfo> m_Instances{};
 
     public:
@@ -30,7 +30,7 @@ namespace luvk_example
 
         void AddInstance(glm::vec2 const& Position);
 
-        [[nodiscard]] constexpr luvk::Mesh& GetMesh() noexcept
+        [[nodiscard]] constexpr const std::shared_ptr<luvk::Mesh>& GetMesh() const noexcept
         {
             return m_Mesh;
         }

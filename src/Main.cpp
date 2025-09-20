@@ -2,10 +2,8 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Core/Application.hpp"
-
 #include <SDL2/SDL_vulkan.h>
-
+#include "luvk_example/Core/Application.hpp"
 #ifdef main
 #undef main
 #endif
@@ -14,14 +12,12 @@
 #include <thread>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <luvk/Libraries/ShaderCompiler.hpp>
 #include "luvk_example/Core/Camera.hpp"
 #include "luvk_example/Meshes/Cube.hpp"
 #include "luvk_example/Meshes/Pixel.hpp"
 #include "luvk_example/Meshes/Triangle.hpp"
 #include "luvk_example/UserInterface/ImGuiLayer.hpp"
-
-#include <luvk/Libraries/ShaderCompiler.hpp>
 
 using namespace luvk_example;
 
@@ -61,6 +57,7 @@ std::int32_t main()
         volkInitialize();
         volkLoadInstance(Renderer->GetInstance());
         volkLoadDevice(DeviceModule->GetLogicalDevice());
+
         const ScopeCaller<[]
         {
             volkFinalize();

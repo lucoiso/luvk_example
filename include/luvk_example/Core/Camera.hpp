@@ -5,7 +5,6 @@
 #pragma once
 
 #include "luvk_example/Core/InputManager.hpp"
-
 #include <glm/glm.hpp>
 
 namespace luvk_example

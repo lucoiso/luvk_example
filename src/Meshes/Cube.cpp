@@ -83,13 +83,13 @@ namespace
                                     })";
 } // namespace
 
-Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
+Cube::Cube(const std::shared_ptr<luvk::MeshRegistry>& Registry,
            const std::shared_ptr<luvk::Device>& Device,
            const std::shared_ptr<luvk::SwapChain>& Swap,
            const std::shared_ptr<luvk::Memory>& Memory)
-    : m_Registry(std::move(Registry)),
-      m_Pipeline(std::make_shared<luvk::Pipeline>()),
-      m_UBO(std::make_shared<luvk::Buffer>())
+    : m_Registry(Registry),
+      m_Pipeline(std::make_shared<luvk::Pipeline>(Device)),
+      m_UBO(std::make_shared<luvk::Buffer>(Device, Memory))
 {
     auto CubeMesh = luvk::CompileGLSLToSPIRV(CubeMeshSrc, EShLangMesh);
     auto CubeFrag = luvk::CompileGLSLToSPIRV(CubeFragSrc, EShLangFragment);
@@ -99,8 +99,7 @@ Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
 
     constexpr VkPushConstantRange CubePC{VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(glm::mat4)};
 
-    m_Pipeline->CreateMeshPipeline(Device,
-                                   {.Extent = Extent,
+    m_Pipeline->CreateMeshPipeline({.Extent = Extent,
                                     .ColorFormats = Formats,
                                     .RenderPass = Swap->GetRenderPass(),
                                     .Subpass = 0,
@@ -111,8 +110,8 @@ Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
                                     .PushConstants = std::array{CubePC},
                                     .CullMode = VK_CULL_MODE_NONE});
 
-    m_UBO->CreateBuffer(Memory,
-                        {.Size = sizeof(glm::mat4),
+    m_UBO->CreateBuffer({.Name = "Cube Uniform",
+                         .Size = sizeof(glm::mat4),
                          .Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                          .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
@@ -124,10 +123,9 @@ Cube::Cube(std::shared_ptr<luvk::MeshRegistry> Registry,
                                        nullptr,
                                        m_UBO,
                                        {},
-                                       m_Pipeline,
-                                       Device);
+                                       m_Pipeline);
 
-    m_Mesh = luvk::Mesh(m_Registry, m_Index);
+    m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_Index);
 }
 
 void Cube::Update(const float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const

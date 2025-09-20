@@ -49,19 +49,19 @@ namespace
                                 })";
 }
 
-ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
-                     std::shared_ptr<luvk::Device> Device,
-                     std::shared_ptr<luvk::SwapChain> Swap,
-                     std::shared_ptr<luvk::Memory> Memory)
-    : m_Registry(std::move(Registry)),
-      m_DescPool(std::make_shared<luvk::DescriptorPool>()),
-      m_FontSet(std::make_shared<luvk::DescriptorSet>()),
-      m_FontImage(std::make_shared<luvk::Image>()),
-      m_FontSampler(std::make_shared<luvk::Sampler>()),
-      m_Pipeline(std::make_shared<luvk::Pipeline>()),
-      m_Device(std::move(Device)),
-      m_SwapChain(std::move(Swap)),
-      m_Memory(std::move(Memory))
+ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::MeshRegistry>& Registry,
+                     const std::shared_ptr<luvk::Device>& Device,
+                     const std::shared_ptr<luvk::SwapChain>& Swap,
+                     const std::shared_ptr<luvk::Memory>& Memory)
+    : m_DescPool(std::make_shared<luvk::DescriptorPool>(Device)),
+      m_FontSet(std::make_shared<luvk::DescriptorSet>(Device, m_DescPool, Memory)),
+      m_FontImage(std::make_shared<luvk::Image>(Device, Memory)),
+      m_FontSampler(std::make_shared<luvk::Sampler>(Device)),
+      m_Pipeline(std::make_shared<luvk::Pipeline>(Device)),
+      m_Registry(Registry),
+      m_Device(Device),
+      m_SwapChain(Swap),
+      m_Memory(Memory)
 {
     constexpr std::uint32_t DescriptorCount = 100U;
 
@@ -77,11 +77,11 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
                                              VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, DescriptorCount},
                                              VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, DescriptorCount}};
 
-    m_DescPool->CreateDescriptorPool(m_Device, std::size(DescriptorPoolSizes), DescriptorPoolSizes);
+    m_DescPool->CreateDescriptorPool(std::size(DescriptorPoolSizes), DescriptorPoolSizes);
 
     constexpr VkDescriptorSetLayoutBinding Binding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
-    m_FontSet->CreateLayout(m_Device, {.Bindings = std::array{Binding}});
-    m_FontSet->Allocate(m_DescPool, m_Memory);
+    m_FontSet->CreateLayout({.Bindings = std::array{Binding}});
+    m_FontSet->Allocate();
 
     ImGuiIO& IO = ImGui::GetIO();
     IO.BackendRendererName = "ImGuiBackendLUVK";
@@ -92,17 +92,15 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
     std::int32_t Height = 0;
     IO.Fonts->GetTexDataAsRGBA32(&Pixels, &Width, &Height);
 
-    auto Staging = std::make_shared<luvk::Buffer>();
-    Staging->CreateBuffer(m_Memory,
-                          {.Size = static_cast<VkDeviceSize>(Width * Height * 4),
+    auto Staging = std::make_shared<luvk::Buffer>(Device, Memory);
+    Staging->CreateBuffer({.Name = "ImGUI Staging",
+                           .Size = static_cast<VkDeviceSize>(Width * Height * 4),
                            .Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                            .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
     Staging->Upload({reinterpret_cast<std::byte const*>(Pixels), static_cast<size_t>(Width * Height * 4)});
 
-    m_FontImage->CreateImage(m_Device,
-                             m_Memory,
-                             {.Extent = {static_cast<std::uint32_t>(Width), static_cast<std::uint32_t>(Height), 1},
+    m_FontImage->CreateImage({.Extent = {static_cast<std::uint32_t>(Width), static_cast<std::uint32_t>(Height), 1},
                               .Format = VK_FORMAT_R8G8B8A8_UNORM,
                               .Usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
                               .Aspect = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -110,8 +108,7 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
 
     m_FontImage->Upload(Staging);
 
-    m_FontSampler->CreateSampler(m_Device,
-                                 {.Filter = VK_FILTER_LINEAR,
+    m_FontSampler->CreateSampler({.Filter = VK_FILTER_LINEAR,
                                   .AddressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});
 
     m_FontSet->UpdateImage(m_FontImage->GetView(), m_FontSampler->GetHandle(), 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
@@ -130,8 +127,7 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
 
     constexpr VkPushConstantRange PCRange{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4};
 
-    m_Pipeline->CreateGraphicsPipeline(m_Device,
-                                       {.Extent = Extent,
+    m_Pipeline->CreateGraphicsPipeline({.Extent = Extent,
                                         .ColorFormats = Formats,
                                         .RenderPass = m_SwapChain->GetRenderPass(),
                                         .Subpass = 0,
@@ -145,11 +141,11 @@ ImGuiMesh::ImGuiMesh(std::shared_ptr<luvk::MeshRegistry> Registry,
                                         .CullMode = VK_CULL_MODE_NONE,
                                         .EnableDepthOp = false});
 
-    m_Index = m_Registry->RegisterMesh({}, {}, m_FontSet->GetLayout(), m_DescPool, m_FontImage, m_FontSampler, nullptr, {}, m_Pipeline, m_Device);
+    m_Index = m_Registry->RegisterMesh({}, {}, m_FontSet->GetLayout(), m_DescPool, m_FontImage, m_FontSampler, nullptr, {}, m_Pipeline);
     auto& MeshEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_Index]);
     MeshEntry.MaterialPtr->SetDescriptor(m_FontSet);
     MeshEntry.InstanceCount = 1;
-    m_Mesh = luvk::Mesh(m_Registry, m_Index);
+    m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_Index);
 }
 
 void ImGuiMesh::NewFrame() const
@@ -185,9 +181,12 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         m_VtxBufferSize = VertexSize;
         if (!m_VtxBuffer)
         {
-            m_VtxBuffer = std::make_shared<luvk::Buffer>();
+            m_VtxBuffer = std::make_shared<luvk::Buffer>(m_Device, m_Memory);
         }
-        m_VtxBuffer->CreateBuffer(m_Memory, {.Size = m_VtxBufferSize, .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+        m_VtxBuffer->CreateBuffer({.Name = "ImGUI VTX",
+                                   .Size = m_VtxBufferSize,
+                                   .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                   .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
     }
 
     if (!m_IdxBuffer || m_IdxBufferSize < IndexSize)
@@ -195,9 +194,12 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         m_IdxBufferSize = IndexSize;
         if (!m_IdxBuffer)
         {
-            m_IdxBuffer = std::make_shared<luvk::Buffer>();
+            m_IdxBuffer = std::make_shared<luvk::Buffer>(m_Device, m_Memory);
         }
-        m_IdxBuffer->CreateBuffer(m_Memory, {.Size = m_IdxBufferSize, .Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT, .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
+        m_IdxBuffer->CreateBuffer({.Name = "ImGUI IDX",
+                                   .Size = m_IdxBufferSize,
+                                   .Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                   .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
     }
 
     if (m_Vertices.capacity() < static_cast<std::size_t>(RenderData->TotalVtxCount))
