@@ -28,6 +28,7 @@ Application::~Application()
     {
         m_DeviceModule->WaitIdle();
     }
+
     if (m_Window)
     {
         SDL_DestroyWindow(m_Window);
@@ -40,7 +41,6 @@ bool Application::Initialize()
 {
     SDL_Window* const Window = m_Window;
     m_Renderer = luvk::CreateModule<luvk::Renderer>();
-    m_Renderer->PreInitializeRenderer();
 
     constexpr luvk::Renderer::InstanceCreationArguments InstArguments{.ApplicationName = "LuVK Example",
                                                                       .EngineName = "luvk",
@@ -85,7 +85,6 @@ bool Application::Initialize()
         return false;
     }
 
-    m_Renderer->PostInitializeRenderer();
     const VkInstance& VulkanInstance = m_Renderer->GetInstance();
 
     VkSurfaceKHR Surface = VK_NULL_HANDLE;

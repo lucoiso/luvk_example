@@ -13,6 +13,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
+#include "luvk/Types/ScopeCaller.hpp"
 #include "luvk_example/Core/Camera.hpp"
 #include "luvk_example/Meshes/Cube.hpp"
 #include "luvk_example/Meshes/Pixel.hpp"
@@ -20,15 +21,6 @@
 #include "luvk_example/UserInterface/ImGuiLayer.hpp"
 
 using namespace luvk_example;
-
-template <auto Functor>
-struct ScopeCaller
-{
-    ~ScopeCaller()
-    {
-        Functor();
-    }
-};
 
 std::int32_t main()
 {
@@ -58,7 +50,7 @@ std::int32_t main()
         volkLoadInstance(Renderer->GetInstance());
         volkLoadDevice(DeviceModule->GetLogicalDevice());
 
-        const ScopeCaller<[]
+        const luvk::ScopeCaller<[]
         {
             volkFinalize();
         }> FreeVolk{};
@@ -66,12 +58,6 @@ std::int32_t main()
         Cube CubeMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Triangle TriangleMesh{MeshRegistryModule, DeviceModule, SwapChainModule, MemoryModule};
         Pixel PixelMesh{MeshRegistryModule, DeviceModule, SwapChainModule};
-
-        Renderer->GetEventSystem().AddNode(luvk::EventNode::NewNode([]
-                                           {
-                                               SDL_Log("Render loop initialized");
-                                           }),
-                                           luvk::RendererEvents::OnRenderLoopInitialized);
 
         Renderer->InitializeRenderLoop();
 
@@ -129,6 +115,7 @@ std::int32_t main()
                                 SDL_Vulkan_GetDrawableSize(Window, &NewW, &NewH);
                                 const glm::vec2 Position{2.F * static_cast<float>(Event.button.x) / static_cast<float>(NewW) - 1.F,
                                                          2.F * static_cast<float>(Event.button.y) / static_cast<float>(NewH) - 1.F};
+
                                 TriangleMesh.AddInstance(Position);
                             }
                         });
@@ -143,6 +130,7 @@ std::int32_t main()
                                 SDL_Vulkan_GetDrawableSize(Window, &NewW, &NewH);
                                 const glm::vec2 Position{2.F * static_cast<float>(Event.motion.x) / static_cast<float>(NewW) - 1.F,
                                                          2.F * static_cast<float>(Event.motion.y) / static_cast<float>(NewH) - 1.F};
+
                                 PixelMesh.AddInstance(Position);
                             }
                         });

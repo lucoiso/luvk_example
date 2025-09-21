@@ -102,8 +102,5 @@ void Pixel::AddInstance(glm::vec2 const& Position)
     luvk::MeshRegistry::InstanceInfo Instance{.XForm = {.Position = {Position.x, Position.y, 0.F}}, .Color = {1.F, 1.F, 1.F, 1.F}};
     m_Instances.push_back(std::move(Instance));
 
-    if (m_Registry)
-    {
-        m_Registry->UpdateInstances(m_Index, m_Instances);
-    }
+    m_Registry->UpdateInstances(m_Index, m_Instances);
 }

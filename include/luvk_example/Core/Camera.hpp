@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "luvk_example/Core/InputManager.hpp"
 #include <glm/glm.hpp>
+#include "luvk_example/Core/InputManager.hpp"
 
 namespace luvk_example
 {

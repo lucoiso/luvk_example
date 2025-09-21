@@ -161,12 +161,12 @@ Triangle::Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
                                               m_ComputePipeline,
                                               1);
 
-    auto& gfxEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_GraphicsIndex]);
-    gfxEntry.InstanceBuffer = m_ParticleBuffer;
-    gfxEntry.MaterialPtr->SetDescriptor(m_DescriptorSet);
+    auto& PartEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_GraphicsIndex]);
+    PartEntry.InstanceBuffer = m_ParticleBuffer;
+    PartEntry.MaterialPtr->SetDescriptor(m_DescriptorSet);
 
-    const auto& compEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_ComputeIndex]);
-    compEntry.MaterialPtr->SetDescriptor(m_DescriptorSet);
+    const auto& CompEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_ComputeIndex]);
+    CompEntry.MaterialPtr->SetDescriptor(m_DescriptorSet);
 
     m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_GraphicsIndex);
 }
@@ -194,11 +194,11 @@ void Triangle::AddInstance(glm::vec2 const& Position)
 
     const std::size_t ParticlesSize = std::size(m_Particles);
 
-    if (const VkDeviceSize Required = sizeof(Particle) * ParticlesSize;
-        Required > m_ParticleBuffer->GetSize())
+    if (const VkDeviceSize RequiredSize = sizeof(Particle) * ParticlesSize;
+        RequiredSize > m_ParticleBuffer->GetSize())
     {
         m_ParticleBuffer->RecreateBuffer({.Name = "Instance VTX",
-                                          .Size = Required,
+                                          .Size = RequiredSize,
                                           .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                           .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
