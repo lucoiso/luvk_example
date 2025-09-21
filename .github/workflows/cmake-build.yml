@@ -60,7 +60,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libgl-dev libgl1-mesa-dev libx11-dev libx11-xcb-dev \
-            libfontenc-dev libice-dev libsm-dev libxau-dev libxaw7-dev
+            libfontenc-dev libice-dev libsm-dev libxau-dev libxaw7-dev libsdl2-dev
 
       - name: Install Vulkan SDK
         uses: lucoiso/install-vulkan-sdk-action@ff3a36588514be8557bccef15874d5fc8d4132e8
