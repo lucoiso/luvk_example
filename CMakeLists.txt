@@ -71,6 +71,9 @@ IF (APPLE)
             ${CORE_VIDEO_FRAMEWORK}
             ${IOKIT_FRAMEWORK}
             ${CORE_FOUNDATION_FRAMEWORK}
+            "-framework GameController"
+            "-framework CoreHaptics"
+            "-framework Metal"
     )
 ENDIF (APPLE)
 
