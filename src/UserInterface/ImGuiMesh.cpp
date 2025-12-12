@@ -333,7 +333,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
                                                    .y = static_cast<std::int32_t>(ClipMin.y)},
                                         .extent = {.width = static_cast<std::uint32_t>(ClipMax.x - ClipMin.x),
                                                    .height = static_cast<std::uint32_t>(ClipMax.y - ClipMin.y)}};
-            
+
             vkCmdSetScissor(Cmd, 0, 1, &LocalScissor);
 
             const auto DescSet = reinterpret_cast<VkDescriptorSet>(Pcmd->GetTexID());

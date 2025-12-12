@@ -6,8 +6,8 @@
 
 #include <memory>
 #include <SDL2/SDL.h>
-#include "luvk_example/UserInterface/ImGuiBackendSDL2.hpp"
-#include "luvk_example/UserInterface/ImGuiMesh.hpp"
+#include "ImGuiBackendSDL2.hpp"
+#include "ImGuiMesh.hpp"
 
 namespace luvk_example
 {

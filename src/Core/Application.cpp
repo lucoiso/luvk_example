@@ -3,154 +3,174 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Core/Application.hpp"
-#include <execution>
-#include <vector>
+#include "luvk_example/Core/Camera.hpp"
+
 #include <SDL2/SDL_vulkan.h>
+#include <chrono>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 using namespace luvk_example;
 
-constexpr luvk::Renderer::InstanceCreationArguments g_InstArguments{.ApplicationName = "LuVK Example",
-                                                                    .EngineName = "luvk",
-                                                                    .ApplicationVersion = VK_MAKE_VERSION(0U, 0U, 1U),
-                                                                    .EngineVersion = VK_MAKE_VERSION(0U, 0U, 1U)};
-
-constexpr std::uint32_t g_ImageCount = 3U;
-
-Application::Application(const std::uint32_t Width, const std::uint32_t Height)
-    : m_Width(Width),
-      m_Height(Height),
-      m_Renderer(luvk::CreateModule<luvk::Renderer>())
+Application::Application()
+    : ApplicationBase(800, 600)
 {
-    SDL_Init(SDL_INIT_EVERYTHING);
-
-    m_Window = SDL_CreateWindow(std::data(g_InstArguments.ApplicationName),
-                                SDL_WINDOWPOS_CENTERED,
-                                SDL_WINDOWPOS_CENTERED,
-                                static_cast<std::int32_t>(Width),
-                                static_cast<std::int32_t>(Height),
-                                SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
 }
 
 Application::~Application()
 {
-    if (m_DeviceModule)
-    {
-        m_DeviceModule->WaitIdle();
-    }
-
-    if (m_Window)
-    {
-        SDL_DestroyWindow(m_Window);
-    }
-
-    SDL_Quit();
+    m_ImGuiLayer.Shutdown();
 }
 
 bool Application::Initialize()
 {
-    RegisterModules();
-    SetupExtensions();
-
-    if (!m_Renderer->InitializeRenderer(g_InstArguments, nullptr))
+    if (ApplicationBase::Initialize())
     {
-        return false;
-    }
-
-    return InitializeModules();
-}
-
-void Application::RegisterModules()
-{
-    m_DebugModule = luvk::CreateModule<luvk::Debug>(m_Renderer);
-    m_DeviceModule = luvk::CreateModule<luvk::Device>(m_Renderer);
-    m_MemoryModule = luvk::CreateModule<luvk::Memory>(m_Renderer, m_DeviceModule);
-    m_SwapChainModule = luvk::CreateModule<luvk::SwapChain>(m_DeviceModule, m_MemoryModule);
-    m_CommandPoolModule = luvk::CreateModule<luvk::CommandPool>(m_DeviceModule);
-    m_SynchronizationModule = luvk::CreateModule<luvk::Synchronization>(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule, g_ImageCount);
-    m_MeshRegistryModule = luvk::CreateModule<luvk::MeshRegistry>(m_DeviceModule, m_MemoryModule);
-    m_ThreadPoolModule = luvk::CreateModule<luvk::ThreadPool>();
-
-    m_Renderer->RegisterModules(luvk::Vector<luvk::RenderModulePtr>{m_DebugModule,
-                                                                    m_DeviceModule,
-                                                                    m_MemoryModule,
-                                                                    m_SwapChainModule,
-                                                                    m_CommandPoolModule,
-                                                                    m_SynchronizationModule,
-                                                                    m_MeshRegistryModule,
-                                                                    m_ThreadPoolModule});
-}
-
-void Application::SetupExtensions() const
-{
-    std::uint32_t NumExtensions = 0U;
-    if (SDL_Vulkan_GetInstanceExtensions(m_Window, &NumExtensions, nullptr))
-    {
-        std::vector<char const*> ExtensionsData(NumExtensions, nullptr);
-        SDL_Vulkan_GetInstanceExtensions(m_Window, &NumExtensions, std::data(ExtensionsData));
-
-        auto& InstExt = m_Renderer->GetExtensions();
-        for (char const* Ext : ExtensionsData)
+        if (!m_ImGuiLayer.Initialize(m_Window,
+                                     m_MeshRegistryModule,
+                                     m_DeviceModule,
+                                     m_SwapChainModule,
+                                     m_MemoryModule))
         {
-            InstExt.SetExtensionState("", Ext, true);
+            return false;
         }
+
+        RegisterMeshes();
+        RegisterInputBindings();
+
+        return true;
     }
+
+    return false;
 }
 
-bool Application::InitializeModules() const
+Application& Application::GetInstance()
 {
-    if (!InitializeDeviceModule())
+    static Application Instance;
+    static std::once_flag InitFlag;
+
+    std::call_once(InitFlag,
+                   [&]
+                   {
+                       Instance.Initialize();
+                   });
+
+    return Instance;
+}
+
+bool Application::Render()
+{
+    m_Input.ProcessEvents();
+    if (!m_Input.Running())
     {
         return false;
     }
 
-    m_MemoryModule->InitializeAllocator(0);
+    if (!m_CanRender)
+    {
+        return true;
+    }
 
-    m_SwapChainModule->CreateSwapChain(luvk::SwapChainCreationArguments{.ImageCount = g_ImageCount, .Extent = {m_Width, m_Height}}, nullptr);
+    std::int32_t CurrentWidth = 0;
+    std::int32_t CurrentHeight = 0;
+    SDL_Vulkan_GetDrawableSize(m_Window, &CurrentWidth, &CurrentHeight);
 
-    const auto GraphicsQueue = m_DeviceModule->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
-    m_CommandPoolModule->CreateCommandPool(GraphicsQueue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    static auto LastTime = std::chrono::high_resolution_clock::now();
+    const auto CurrentTime = std::chrono::high_resolution_clock::now();
+    const float DeltaTime = std::chrono::duration<float>(CurrentTime - LastTime).count();
+    LastTime = CurrentTime;
 
-    m_ThreadPoolModule->Start(std::thread::hardware_concurrency());
+    m_Camera.Update(DeltaTime, m_Input);
 
-    m_SynchronizationModule->Initialize();
-    m_SynchronizationModule->SetupFrames();
+    glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(CurrentWidth) / static_cast<float>(CurrentHeight), 0.1F, 10.F);
+    Proj[1][1] *= -1.F;
+    m_CubeMesh->Update(DeltaTime, m_Camera.GetViewMatrix(), Proj);
+    m_TriangleMesh->Update(DeltaTime);
 
+    if (m_ImGuiLayer.IsInitialized())
+    {
+        m_ImGuiLayer.NewFrame(DeltaTime);
+
+        m_Renderer->EnqueueCommand([this](const VkCommandBuffer& Cmd)
+        {
+            m_ImGuiLayer.Render(Cmd);
+        });
+    }
+
+    m_Renderer->DrawFrame();
     return true;
 }
 
-bool Application::InitializeDeviceModule() const
+void Application::RegisterMeshes()
 {
-    VkSurfaceKHR Surface = VK_NULL_HANDLE;
-    if (!SDL_Vulkan_CreateSurface(m_Window, m_Renderer->GetInstance(), &Surface))
-    {
-        return false;
-    }
+    m_CubeMesh = std::make_unique<Cube>(m_MeshRegistryModule, m_DeviceModule, m_SwapChainModule, m_MemoryModule);
+    m_TriangleMesh = std::make_unique<Triangle>(m_MeshRegistryModule, m_DeviceModule, m_SwapChainModule, m_MemoryModule);
+    m_PixelMesh = std::make_unique<Pixel>(m_MeshRegistryModule, m_DeviceModule, m_SwapChainModule);
+}
 
-    m_DeviceModule->SetPhysicalDevice(VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
-    m_DeviceModule->SetSurface(Surface);
+void Application::RegisterInputBindings()
+{
+    m_Input.BindEvent(SDL_WINDOWEVENT,
+                      [&](const SDL_Event& Event)
+                      {
+                          if (Event.window.event == SDL_WINDOWEVENT_RESIZED ||
+                              Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
+                              Event.window.event == SDL_WINDOWEVENT_MAXIMIZED)
+                          {
+                              m_Renderer->SetPaused(true);
+                              {
+                                  std::int32_t NewW = 0;
+                                  std::int32_t NewH = 0;
+                                  SDL_Vulkan_GetDrawableSize(m_Window, &NewW, &NewH);
+                                  m_Renderer->Refresh({static_cast<std::uint32_t>(NewW), static_cast<std::uint32_t>(NewH)});
+                              }
+                              m_Renderer->SetPaused(false);
+                          }
+                          else if (Event.window.event == SDL_WINDOWEVENT_MINIMIZED)
+                          {
+                              m_Renderer->SetPaused(true);
+                              m_CanRender = false;
+                          }
+                          else if (Event.window.event == SDL_WINDOWEVENT_RESTORED)
+                          {
+                              m_Renderer->SetPaused(false);
+                              m_CanRender = true;
+                          }
+                      });
 
-    if (auto& DevExt = m_DeviceModule->GetExtensions();
-        DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
-    {
-        DevExt.SetExtensionState("", VK_EXT_MESH_SHADER_EXTENSION_NAME, true);
-    }
+    m_Input.BindEvent(SDL_MOUSEBUTTONDOWN,
+                      [&](const SDL_Event& Event)
+                      {
+                          if (Event.button.button == SDL_BUTTON_RIGHT && !ImGui::GetIO().WantCaptureMouse)
+                          {
+                              std::int32_t NewW = 0;
+                              std::int32_t NewH = 0;
+                              SDL_Vulkan_GetDrawableSize(m_Window, &NewW, &NewH);
+                              const glm::vec2 Position{2.F * static_cast<float>(Event.button.x) / static_cast<float>(NewW) - 1.F,
+                                                       2.F * static_cast<float>(Event.button.y) / static_cast<float>(NewH) - 1.F};
 
-    constexpr VkPhysicalDeviceMeshShaderFeaturesEXT MeshShaderFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_FEATURES_EXT,
-                                                                       .meshShader = VK_TRUE};
+                              m_TriangleMesh->AddInstance(Position);
+                          }
+                      });
 
-    luvk::UnorderedMap<std::uint32_t, std::uint32_t> DeviceQueueMap{};
-    const auto& QueueProperties = m_DeviceModule->GetDeviceQueueFamilyProperties();
-    std::uint32_t Iterator = 0U;
+    m_Input.BindEvent(SDL_MOUSEMOTION,
+                    [&](const SDL_Event& Event)
+                    {
+                        if (m_Input.LeftHeld() && !ImGui::GetIO().WantCaptureMouse)
+                        {
+                            std::int32_t NewW = 0;
+                            std::int32_t NewH = 0;
+                            SDL_Vulkan_GetDrawableSize(m_Window, &NewW, &NewH);
+                            const glm::vec2 Position{2.F * static_cast<float>(Event.motion.x) / static_cast<float>(NewW) - 1.F,
+                                                     2.F * static_cast<float>(Event.motion.y) / static_cast<float>(NewH) - 1.F};
 
-    std::for_each(std::execution::seq,
-                  std::cbegin(QueueProperties),
-                  std::cend(QueueProperties),
-                  [&DeviceQueueMap, &Iterator](VkQueueFamilyProperties const& QueuePropertyIt)
-                  {
-                      DeviceQueueMap.emplace(Iterator++, QueuePropertyIt.queueCount);
-                  });
+                            m_PixelMesh->AddInstance(Position);
+                        }
+                    });
 
-    m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), &MeshShaderFeatures);
-
-    return true;
+    m_Input.BindEvent(SDL_USEREVENT,
+                    [&](const SDL_Event& Event)
+                    {
+                        [[maybe_unused]] const auto _ = m_ImGuiLayer.ProcessEvent(Event);
+                    });
 }

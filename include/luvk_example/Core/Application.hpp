@@ -4,97 +4,46 @@
 
 #pragma once
 
-#include <memory>
-#include <luvk/Modules/CommandPool.hpp>
-#include <luvk/Modules/Debug.hpp>
-#include <luvk/Modules/Device.hpp>
-#include <luvk/Modules/Memory.hpp>
-#include <luvk/Modules/MeshRegistry.hpp>
-#include <luvk/Modules/Renderer.hpp>
-#include <luvk/Modules/SwapChain.hpp>
-#include <luvk/Modules/Synchronization.hpp>
-#include <luvk/Modules/ThreadPool.hpp>
-#include <SDL2/SDL.h>
-#include "luvk_example/Core/InputManager.hpp"
+#include "luvk_example/Core/ApplicationBase.hpp"
+#include "luvk_example/Core/Camera.hpp"
+#include "luvk_example/Meshes/Cube.hpp"
+#include "luvk_example/Meshes/Pixel.hpp"
+#include "luvk_example/Meshes/Triangle.hpp"
+#include "luvk_example/UserInterface/ImGuiLayer.hpp"
 
 namespace luvk_example
 {
-    class Application
+    class Application : public ApplicationBase
     {
-        InputManager m_Input;
-        SDL_Window* m_Window{};
-        std::uint32_t m_Width{};
-        std::uint32_t m_Height{};
-        std::shared_ptr<luvk::Renderer> m_Renderer{};
-        std::shared_ptr<luvk::Debug> m_DebugModule{};
-        std::shared_ptr<luvk::SwapChain> m_SwapChainModule{};
-        std::shared_ptr<luvk::Device> m_DeviceModule{};
-        std::shared_ptr<luvk::Memory> m_MemoryModule{};
-        std::shared_ptr<luvk::CommandPool> m_CommandPoolModule{};
-        std::shared_ptr<luvk::Synchronization> m_SynchronizationModule{};
-        std::shared_ptr<luvk::MeshRegistry> m_MeshRegistryModule{};
-        std::shared_ptr<luvk::ThreadPool> m_ThreadPoolModule{};
+        bool m_CanRender{true};
+        std::unique_ptr<Cube> m_CubeMesh;
+        std::unique_ptr<Triangle> m_TriangleMesh;
+        std::unique_ptr<Pixel> m_PixelMesh;
+        ImGuiLayer m_ImGuiLayer;
+        Camera m_Camera;
+
+        Application();
+        ~Application() override;
+
+        bool Initialize() override;
 
     public:
-        explicit Application(std::uint32_t Width, std::uint32_t Height);
-        ~Application();
+        static Application& GetInstance();
+        bool Render() override;
 
-        bool Initialize();
 
-        [[nodiscard]] constexpr InputManager& GetInput() noexcept
+        [[nodiscard]] constexpr ImGuiLayer& GetImGuiLayer() noexcept
         {
-            return m_Input;
+            return m_ImGuiLayer;
         }
 
-        [[nodiscard]] constexpr std::shared_ptr<luvk::Renderer> const& GetRenderer() const noexcept
+        [[nodiscard]] constexpr Camera& GetCamera() noexcept
         {
-            return m_Renderer;
-        }
-
-        [[nodiscard]] constexpr std::shared_ptr<luvk::Device> const& GetDevice() const noexcept
-        {
-            return m_DeviceModule;
-        }
-
-        [[nodiscard]] constexpr std::shared_ptr<luvk::SwapChain> const& GetSwapChain() const noexcept
-        {
-            return m_SwapChainModule;
-        }
-
-        [[nodiscard]] constexpr std::shared_ptr<luvk::CommandPool> const& GetCommandPool() const noexcept
-        {
-            return m_CommandPoolModule;
-        }
-
-        [[nodiscard]] constexpr std::shared_ptr<luvk::Memory> const& GetMemory() const noexcept
-        {
-            return m_MemoryModule;
-        }
-
-        [[nodiscard]] constexpr std::shared_ptr<luvk::Synchronization> const& GetSync() const noexcept
-        {
-            return m_SynchronizationModule;
-        }
-
-        [[nodiscard]] constexpr std::shared_ptr<luvk::MeshRegistry> const& GetMeshRegistry() const noexcept
-        {
-            return m_MeshRegistryModule;
-        }
-
-        [[nodiscard]] constexpr std::shared_ptr<luvk::ThreadPool> const& GetThreadPool() const noexcept
-        {
-            return m_ThreadPoolModule;
-        }
-
-        [[nodiscard]] constexpr SDL_Window* GetWindow() const noexcept
-        {
-            return m_Window;
+            return m_Camera;
         }
 
     private:
-        void RegisterModules();
-        void SetupExtensions() const;
-        bool InitializeModules() const;
-        bool InitializeDeviceModule() const;
+        void RegisterMeshes();
+        void RegisterInputBindings();
     };
 } // namespace luvk_example

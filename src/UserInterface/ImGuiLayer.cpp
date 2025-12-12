@@ -50,6 +50,7 @@ void ImGuiLayer::NewFrame(const float DeltaTime) const
         ImGuiIO& IO = ImGui::GetIO();
         IO.DeltaTime = DeltaTime;
         m_SdlBackend.NewFrame();
+
         if (m_Mesh)
         {
             m_Mesh->NewFrame();
