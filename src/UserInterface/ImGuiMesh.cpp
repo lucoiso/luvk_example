@@ -11,43 +11,66 @@
 
 using namespace luvk_example;
 
-namespace
-{
-    constexpr auto VertSrc = R"(#version 450
+constexpr auto g_VertexShader = R"(
+    #version 450
 
-                                layout(location = 0) in vec2 inPos;
-                                layout(location = 1) in vec2 inUV;
-                                layout(location = 2) in vec4 inColor;
+    layout(location = 0) in vec2 inPos;
+    layout(location = 1) in vec2 inUV;
+    layout(location = 2) in vec4 inColor;
 
-                                layout(push_constant) uniform PC
-                                {
-                                    vec2 scale;
-                                    vec2 translate;
-                                } pc;
+    layout(push_constant) uniform PC
+    {
+        vec2 scale;
+        vec2 translate;
+    } pc;
 
-                                layout(location = 0) out vec2 fragUV;
-                                layout(location = 1) out vec4 fragColor;
+    layout(location = 0) out vec2 fragUV;
+    layout(location = 1) out vec4 fragColor;
 
-                                void main()
-                                {
-                                    fragUV = inUV;
-                                    fragColor = inColor;
-                                    gl_Position = vec4(inPos * pc.scale + pc.translate, 0.0, 1.0);
-                                })";
+    void main()
+    {
+        fragUV = inUV;
+        fragColor = inColor;
+        gl_Position = vec4(inPos * pc.scale + pc.translate, 0.0, 1.0);
+    }
+)";
 
-    constexpr auto FragSrc = R"(#version 450
+constexpr auto g_FragmentShader = R"(
+    #version 450
 
-                                layout(set = 0, binding = 0) uniform sampler2D Font;
+    layout(set = 0, binding = 0) uniform sampler2D Font;
 
-                                layout(location = 0) in vec2 fragUV;
-                                layout(location = 1) in vec4 fragColor;
-                                layout(location = 0) out vec4 outColor;
+    layout(location = 0) in vec2 fragUV;
+    layout(location = 1) in vec4 fragColor;
+    layout(location = 0) out vec4 outColor;
 
-                                void main()
-                                {
-                                    outColor = fragColor * texture(Font, fragUV);
-                                })";
-}
+    void main()
+    {
+        outColor = fragColor * texture(Font, fragUV);
+    }
+)";
+
+constexpr std::uint32_t g_DescriptorCount = 100U;
+
+constexpr std::array g_DescriptorPoolSizes{VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_SAMPLER,                g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, g_DescriptorCount},
+                                           VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       g_DescriptorCount}};
+
+constexpr VkDescriptorSetLayoutBinding g_DescriptorBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+
+constexpr std::array g_Bindings{VkVertexInputBindingDescription{0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX}};
+
+constexpr std::array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT,  offsetof(ImDrawVert, pos)},
+                                  VkVertexInputAttributeDescription{1, 0, VK_FORMAT_R32G32_SFLOAT,  offsetof(ImDrawVert, uv)},
+                                  VkVertexInputAttributeDescription{2, 0, VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col)}};
 
 ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::MeshRegistry>& Registry,
                      const std::shared_ptr<luvk::Device>& Device,
@@ -63,24 +86,9 @@ ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::MeshRegistry>& Registry,
       m_SwapChain(Swap),
       m_Memory(Memory)
 {
-    constexpr std::uint32_t DescriptorCount = 100U;
+    m_DescPool->CreateDescriptorPool(std::size(g_DescriptorPoolSizes), g_DescriptorPoolSizes);
 
-    constexpr std::array DescriptorPoolSizes{VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_SAMPLER, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, DescriptorCount},
-                                             VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, DescriptorCount}};
-
-    m_DescPool->CreateDescriptorPool(std::size(DescriptorPoolSizes), DescriptorPoolSizes);
-
-    constexpr VkDescriptorSetLayoutBinding Binding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
-    m_FontSet->CreateLayout({.Bindings = std::array{Binding}});
+    m_FontSet->CreateLayout({.Bindings = std::array{g_DescriptorBinding}});
     m_FontSet->Allocate();
 
     ImGuiIO& IO = ImGui::GetIO();
@@ -92,7 +100,7 @@ ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::MeshRegistry>& Registry,
     std::int32_t Height = 0;
     IO.Fonts->GetTexDataAsRGBA32(&Pixels, &Width, &Height);
 
-    auto Staging = std::make_shared<luvk::Buffer>(Device, Memory);
+    const auto Staging = std::make_shared<luvk::Buffer>(Device, Memory);
     Staging->CreateBuffer({.Name = "ImGUI Staging",
                            .Size = static_cast<VkDeviceSize>(Width * Height * 4),
                            .Usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -114,52 +122,50 @@ ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::MeshRegistry>& Registry,
     m_FontSet->UpdateImage(m_FontImage->GetView(), m_FontSampler->GetHandle(), 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
     IO.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_FontSet->GetHandle()));
 
-    auto VertexShader = luvk::CompileGLSLToSPIRV(VertSrc, EShLangVertex);
-    auto FragmentShader = luvk::CompileGLSLToSPIRV(FragSrc, EShLangFragment);
-
-    const VkExtent2D Extent = m_SwapChain->GetExtent();
-    const std::array Formats{m_SwapChain->GetCreationArguments().Format};
-
-    constexpr std::array Bindings{VkVertexInputBindingDescription{0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX}};
-    constexpr std::array Attrs{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, pos)},
-                               VkVertexInputAttributeDescription{1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, uv)},
-                               VkVertexInputAttributeDescription{2, 0, VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col)}};
-
     constexpr VkPushConstantRange PCRange{VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(float) * 4};
 
-    m_Pipeline->CreateGraphicsPipeline({.Extent = Extent,
-                                        .ColorFormats = Formats,
+    m_Pipeline->CreateGraphicsPipeline({.Extent = m_SwapChain->GetExtent(),
+                                        .ColorFormats = std::array{m_SwapChain->GetCreationArguments().Format},
                                         .RenderPass = m_SwapChain->GetRenderPass(),
                                         .Subpass = 0,
-                                        .VertexShader = VertexShader,
-                                        .FragmentShader = FragmentShader,
+                                        .VertexShader = luvk::CompileGLSLToSPIRV(g_VertexShader, EShLangVertex),
+                                        .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
                                         .SetLayouts = std::array{m_FontSet->GetLayout()},
-                                        .Bindings = Bindings,
-                                        .Attributes = Attrs,
+                                        .Bindings = g_Bindings,
+                                        .Attributes = g_Attributes,
                                         .PushConstants = std::array{PCRange},
                                         .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                         .CullMode = VK_CULL_MODE_NONE,
                                         .EnableDepthOp = false});
 
-    m_Index = m_Registry->RegisterMesh({}, {}, m_FontSet->GetLayout(), m_DescPool, m_FontImage, m_FontSampler, nullptr, {}, m_Pipeline);
+    m_Index = m_Registry->RegisterMesh({},
+                                       {},
+                                       m_FontSet->GetLayout(),
+                                       m_DescPool,
+                                       m_FontImage,
+                                       m_FontSampler,
+                                       nullptr,
+                                       {},
+                                       m_Pipeline);
+
     auto& MeshEntry = const_cast<luvk::MeshEntry&>(m_Registry->GetMeshes()[m_Index]);
     MeshEntry.MaterialPtr->SetDescriptor(m_FontSet);
     MeshEntry.InstanceCount = 1;
+
     m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_Index);
 }
 
 void ImGuiMesh::NewFrame() const
 {
     ImGuiIO& GuiIO = ImGui::GetIO();
-    GuiIO.DeltaTime = GuiIO.DeltaTime > 0
-                          ? GuiIO.DeltaTime
-                          : 1.F / 60.F;
+    GuiIO.DeltaTime = GuiIO.DeltaTime > 0 ? GuiIO.DeltaTime : 1.F / 60.F;
     ImGui::NewFrame();
 }
 
 void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
 {
     ImGui::Render();
+
     ImDrawData* RenderData = ImGui::GetDrawData();
     if (!RenderData || RenderData->TotalVtxCount == 0)
     {
@@ -183,6 +189,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         {
             m_VtxBuffer = std::make_shared<luvk::Buffer>(m_Device, m_Memory);
         }
+
         m_VtxBuffer->CreateBuffer({.Name = "ImGUI VTX",
                                    .Size = m_VtxBufferSize,
                                    .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
@@ -196,6 +203,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
         {
             m_IdxBuffer = std::make_shared<luvk::Buffer>(m_Device, m_Memory);
         }
+
         m_IdxBuffer->CreateBuffer({.Name = "ImGUI IDX",
                                    .Size = m_IdxBufferSize,
                                    .Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
@@ -210,6 +218,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
     {
         m_Indices.reserve(RenderData->TotalIdxCount);
     }
+
     m_Vertices.resize(RenderData->TotalVtxCount);
     m_Indices.resize(RenderData->TotalIdxCount);
 
@@ -218,12 +227,15 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
     for (std::int32_t ListIt = 0; ListIt < RenderData->CmdListsCount; ListIt++)
     {
         ImDrawList const* CmdList = RenderData->CmdLists[ListIt];
+
         std::memcpy(std::data(m_Vertices) + VtxOffset,
                     CmdList->VtxBuffer.Data,
                     CmdList->VtxBuffer.Size * sizeof(ImDrawVert));
+
         std::memcpy(std::data(m_Indices) + IdxOffset,
                     CmdList->IdxBuffer.Data,
                     CmdList->IdxBuffer.Size * sizeof(ImDrawIdx));
+
         VtxOffset += CmdList->VtxBuffer.Size;
         IdxOffset += CmdList->IdxBuffer.Size;
     }
@@ -244,9 +256,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
     vkCmdBindIndexBuffer(Cmd,
                          m_IdxBuffer->GetHandle(),
                          0,
-                         sizeof(ImDrawIdx) == 2
-                             ? VK_INDEX_TYPE_UINT16
-                             : VK_INDEX_TYPE_UINT32);
+                         sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
 
     constexpr std::size_t NumPushConstant = std::size(Push) * sizeof(float);
     const auto PushConstantData = std::data(Push);
@@ -281,9 +291,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
                     vkCmdBindIndexBuffer(Cmd,
                                          m_IdxBuffer->GetHandle(),
                                          0,
-                                         sizeof(ImDrawIdx) == 2
-                                             ? VK_INDEX_TYPE_UINT16
-                                             : VK_INDEX_TYPE_UINT32);
+                                         sizeof(ImDrawIdx) == 2 ? VK_INDEX_TYPE_UINT16 : VK_INDEX_TYPE_UINT32);
                     vkCmdPushConstants(Cmd, m_Pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, NumPushConstant, PushConstantData);
                 }
                 else
@@ -296,6 +304,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
 
             ImVec2 ClipMin((Pcmd->ClipRect.x - ClipOff.x) * ClipScale.x,
                            (Pcmd->ClipRect.y - ClipOff.y) * ClipScale.y);
+
             ImVec2 ClipMax((Pcmd->ClipRect.z - ClipOff.x) * ClipScale.x,
                            (Pcmd->ClipRect.w - ClipOff.y) * ClipScale.y);
 
@@ -324,6 +333,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd)
                                                    .y = static_cast<std::int32_t>(ClipMin.y)},
                                         .extent = {.width = static_cast<std::uint32_t>(ClipMax.x - ClipMin.x),
                                                    .height = static_cast<std::uint32_t>(ClipMax.y - ClipMin.y)}};
+            
             vkCmdSetScissor(Cmd, 0, 1, &LocalScissor);
 
             const auto DescSet = reinterpret_cast<VkDescriptorSet>(Pcmd->GetTexID());

@@ -4,6 +4,12 @@
 
 #include <SDL2/SDL_vulkan.h>
 #include "luvk_example/Core/Application.hpp"
+#include "luvk_example/Core/Camera.hpp"
+#include "luvk_example/Meshes/Cube.hpp"
+#include "luvk_example/Meshes/Pixel.hpp"
+#include "luvk_example/Meshes/Triangle.hpp"
+#include "luvk_example/UserInterface/ImGuiLayer.hpp"
+
 #ifdef main
 #undef main
 #endif
@@ -13,12 +19,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
-#include "luvk/Types/ScopeCaller.hpp"
-#include "luvk_example/Core/Camera.hpp"
-#include "luvk_example/Meshes/Cube.hpp"
-#include "luvk_example/Meshes/Pixel.hpp"
-#include "luvk_example/Meshes/Triangle.hpp"
-#include "luvk_example/UserInterface/ImGuiLayer.hpp"
+#include <luvk/Types/ScopeCaller.hpp>
 
 using namespace luvk_example;
 
@@ -38,13 +39,11 @@ std::int32_t main()
         auto& Input = App.GetInput();
         SDL_Window* const Window = App.GetWindow();
 
-        auto Renderer = App.GetRenderer();
-        auto DeviceModule = App.GetDevice();
-        auto SwapChainModule = App.GetSwapChain();
-        auto CommandPoolModule = App.GetCommandPool();
-        auto MemoryModule = App.GetMemory();
-        auto MeshRegistryModule = App.GetMeshRegistry();
-        auto ThreadPoolModule = App.GetThreadPool();
+        const auto& Renderer = App.GetRenderer();
+        const auto& DeviceModule = App.GetDevice();
+        const auto& SwapChainModule = App.GetSwapChain();
+        const auto& MemoryModule = App.GetMemory();
+        const auto& MeshRegistryModule = App.GetMeshRegistry();
 
         volkInitialize();
         volkLoadInstance(Renderer->GetInstance());
@@ -68,7 +67,6 @@ std::int32_t main()
 
         ImGuiLayer GuiLayer;
         if (!GuiLayer.Initialize(Window,
-                                 Renderer,
                                  MeshRegistryModule,
                                  DeviceModule,
                                  SwapChainModule,
@@ -108,7 +106,7 @@ std::int32_t main()
         Input.BindEvent(SDL_MOUSEBUTTONDOWN,
                         [&](const SDL_Event& Event)
                         {
-                            if (Event.button.button == SDL_BUTTON_RIGHT)
+                            if (Event.button.button == SDL_BUTTON_RIGHT && !ImGui::GetIO().WantCaptureMouse)
                             {
                                 std::int32_t NewW = 0;
                                 std::int32_t NewH = 0;
@@ -123,7 +121,7 @@ std::int32_t main()
         Input.BindEvent(SDL_MOUSEMOTION,
                         [&](const SDL_Event& Event)
                         {
-                            if (Input.LeftHeld())
+                            if (Input.LeftHeld() && !ImGui::GetIO().WantCaptureMouse)
                             {
                                 std::int32_t NewW = 0;
                                 std::int32_t NewH = 0;

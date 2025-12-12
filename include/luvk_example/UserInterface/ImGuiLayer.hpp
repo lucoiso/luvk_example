@@ -21,15 +21,14 @@ namespace luvk_example
         constexpr ImGuiLayer() = default;
 
         bool Initialize(SDL_Window* Window,
-                        std::shared_ptr<luvk::Renderer> const& Renderer,
                         std::shared_ptr<luvk::MeshRegistry> const& Registry,
                         std::shared_ptr<luvk::Device> const& Device,
                         std::shared_ptr<luvk::SwapChain> const& Swap,
                         std::shared_ptr<luvk::Memory> const& Memory);
 
-        void Shutdown();
-        void NewFrame(float DeltaTime) const;
-        void Render(const VkCommandBuffer& Cmd);
+        void               Shutdown();
+        void               NewFrame(float DeltaTime) const;
+        void               Render(const VkCommandBuffer& Cmd) const;
         [[nodiscard]] bool ProcessEvent(const SDL_Event& Event) const;
 
         [[nodiscard]] constexpr bool IsInitialized() const noexcept

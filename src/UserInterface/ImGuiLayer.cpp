@@ -8,7 +8,6 @@
 using namespace luvk_example;
 
 bool ImGuiLayer::Initialize(SDL_Window* Window,
-                            std::shared_ptr<luvk::Renderer> const& /*Renderer*/,
                             std::shared_ptr<luvk::MeshRegistry> const& Registry,
                             std::shared_ptr<luvk::Device> const& Device,
                             std::shared_ptr<luvk::SwapChain> const& Swap,
@@ -60,7 +59,7 @@ void ImGuiLayer::NewFrame(const float DeltaTime) const
     }
 }
 
-void ImGuiLayer::Render(const VkCommandBuffer& Cmd)
+void ImGuiLayer::Render(const VkCommandBuffer& Cmd) const
 {
     if (m_Initialized && m_Mesh)
     {

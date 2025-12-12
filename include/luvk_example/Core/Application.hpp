@@ -90,5 +90,11 @@ namespace luvk_example
         {
             return m_Window;
         }
+
+    private:
+        void RegisterModules();
+        void SetupExtensions() const;
+        bool InitializeModules() const;
+        bool InitializeDeviceModule() const;
     };
 } // namespace luvk_example

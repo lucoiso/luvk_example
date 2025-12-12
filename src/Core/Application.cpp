@@ -9,12 +9,21 @@
 
 using namespace luvk_example;
 
+constexpr luvk::Renderer::InstanceCreationArguments g_InstArguments{.ApplicationName = "LuVK Example",
+                                                                    .EngineName = "luvk",
+                                                                    .ApplicationVersion = VK_MAKE_VERSION(0U, 0U, 1U),
+                                                                    .EngineVersion = VK_MAKE_VERSION(0U, 0U, 1U)};
+
+constexpr std::uint32_t g_ImageCount = 3U;
+
 Application::Application(const std::uint32_t Width, const std::uint32_t Height)
     : m_Width(Width),
-      m_Height(Height)
+      m_Height(Height),
+      m_Renderer(luvk::CreateModule<luvk::Renderer>())
 {
     SDL_Init(SDL_INIT_EVERYTHING);
-    m_Window = SDL_CreateWindow("LuVK Example",
+
+    m_Window = SDL_CreateWindow(std::data(g_InstArguments.ApplicationName),
                                 SDL_WINDOWPOS_CENTERED,
                                 SDL_WINDOWPOS_CENTERED,
                                 static_cast<std::int32_t>(Width),
@@ -39,22 +48,25 @@ Application::~Application()
 
 bool Application::Initialize()
 {
-    SDL_Window* const Window = m_Window;
-    m_Renderer = luvk::CreateModule<luvk::Renderer>();
+    RegisterModules();
+    SetupExtensions();
 
-    constexpr luvk::Renderer::InstanceCreationArguments InstArguments{.ApplicationName = "LuVK Example",
-                                                                      .EngineName = "luvk",
-                                                                      .ApplicationVersion = VK_MAKE_VERSION(0U, 0U, 1U),
-                                                                      .EngineVersion = VK_MAKE_VERSION(0U, 0U, 1U)};
+    if (!m_Renderer->InitializeRenderer(g_InstArguments, nullptr))
+    {
+        return false;
+    }
 
-    constexpr std::uint32_t ImageCount = 3U;
+    return InitializeModules();
+}
 
+void Application::RegisterModules()
+{
     m_DebugModule = luvk::CreateModule<luvk::Debug>(m_Renderer);
     m_DeviceModule = luvk::CreateModule<luvk::Device>(m_Renderer);
     m_MemoryModule = luvk::CreateModule<luvk::Memory>(m_Renderer, m_DeviceModule);
     m_SwapChainModule = luvk::CreateModule<luvk::SwapChain>(m_DeviceModule, m_MemoryModule);
     m_CommandPoolModule = luvk::CreateModule<luvk::CommandPool>(m_DeviceModule);
-    m_SynchronizationModule = luvk::CreateModule<luvk::Synchronization>(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule, ImageCount);
+    m_SynchronizationModule = luvk::CreateModule<luvk::Synchronization>(m_DeviceModule, m_SwapChainModule, m_CommandPoolModule, g_ImageCount);
     m_MeshRegistryModule = luvk::CreateModule<luvk::MeshRegistry>(m_DeviceModule, m_MemoryModule);
     m_ThreadPoolModule = luvk::CreateModule<luvk::ThreadPool>();
 
@@ -66,12 +78,15 @@ bool Application::Initialize()
                                                                     m_SynchronizationModule,
                                                                     m_MeshRegistryModule,
                                                                     m_ThreadPoolModule});
+}
 
+void Application::SetupExtensions() const
+{
     std::uint32_t NumExtensions = 0U;
-    if (SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, nullptr))
+    if (SDL_Vulkan_GetInstanceExtensions(m_Window, &NumExtensions, nullptr))
     {
         std::vector<char const*> ExtensionsData(NumExtensions, nullptr);
-        SDL_Vulkan_GetInstanceExtensions(Window, &NumExtensions, std::data(ExtensionsData));
+        SDL_Vulkan_GetInstanceExtensions(m_Window, &NumExtensions, std::data(ExtensionsData));
 
         auto& InstExt = m_Renderer->GetExtensions();
         for (char const* Ext : ExtensionsData)
@@ -79,16 +94,34 @@ bool Application::Initialize()
             InstExt.SetExtensionState("", Ext, true);
         }
     }
+}
 
-    if (!m_Renderer->InitializeRenderer(InstArguments, nullptr))
+bool Application::InitializeModules() const
+{
+    if (!InitializeDeviceModule())
     {
         return false;
     }
 
-    const VkInstance& VulkanInstance = m_Renderer->GetInstance();
+    m_MemoryModule->InitializeAllocator(0);
 
+    m_SwapChainModule->CreateSwapChain(luvk::SwapChainCreationArguments{.ImageCount = g_ImageCount, .Extent = {m_Width, m_Height}}, nullptr);
+
+    const auto GraphicsQueue = m_DeviceModule->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
+    m_CommandPoolModule->CreateCommandPool(GraphicsQueue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+
+    m_ThreadPoolModule->Start(std::thread::hardware_concurrency());
+
+    m_SynchronizationModule->Initialize();
+    m_SynchronizationModule->SetupFrames();
+
+    return true;
+}
+
+bool Application::InitializeDeviceModule() const
+{
     VkSurfaceKHR Surface = VK_NULL_HANDLE;
-    if (!SDL_Vulkan_CreateSurface(Window, VulkanInstance, &Surface))
+    if (!SDL_Vulkan_CreateSurface(m_Window, m_Renderer->GetInstance(), &Surface))
     {
         return false;
     }
@@ -118,18 +151,6 @@ bool Application::Initialize()
                   });
 
     m_DeviceModule->CreateLogicalDevice(std::move(DeviceQueueMap), &MeshShaderFeatures);
-    m_MemoryModule->InitializeAllocator(0);
-
-    m_SwapChainModule->CreateSwapChain(luvk::SwapChainCreationArguments{.ImageCount = ImageCount, .Extent = {m_Width, m_Height}},
-                                       nullptr);
-
-    const auto GraphicsQueue = m_DeviceModule->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
-    m_CommandPoolModule->CreateCommandPool(GraphicsQueue, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-
-    m_ThreadPoolModule->Start(2); // std::thread::hardware_concurrency() if rendering multiple objects
-
-    m_SynchronizationModule->Initialize();
-    m_SynchronizationModule->SetupFrames();
 
     return true;
 }
