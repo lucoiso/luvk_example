@@ -4,10 +4,11 @@
 
 #include "luvk_example/Core/Camera.hpp"
 #include <glm/gtc/matrix_transform.hpp>
+#include "luvk_example/Core/InputManager.hpp"
 
 using namespace luvk_example;
 
-void Camera::Update(const float DeltaTime, InputManager const& Input)
+void Camera::Update(const float DeltaTime, const InputManager& Input)
 {
     if (Input.IsKeyPressed(SDLK_LEFT))
     {

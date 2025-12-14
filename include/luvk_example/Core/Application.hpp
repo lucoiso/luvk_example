@@ -15,22 +15,21 @@ namespace luvk_example
 {
     class Application : public ApplicationBase
     {
-        bool m_CanRender{true};
-        std::unique_ptr<Cube> m_CubeMesh;
+        bool                      m_CanRender{true};
+        bool                      m_ResizePending{false};
+        std::unique_ptr<Cube>     m_CubeMesh;
         std::unique_ptr<Triangle> m_TriangleMesh;
-        std::unique_ptr<Pixel> m_PixelMesh;
-        ImGuiLayer m_ImGuiLayer;
-        Camera m_Camera;
+        std::unique_ptr<Pixel>    m_PixelMesh;
+        ImGuiLayer                m_ImGuiLayer;
+        Camera                    m_Camera;
 
         Application();
         ~Application() override;
-
         bool Initialize() override;
 
     public:
         static Application& GetInstance();
-        bool Render() override;
-
+        bool                Render() override;
 
         [[nodiscard]] constexpr ImGuiLayer& GetImGuiLayer() noexcept
         {
@@ -43,7 +42,7 @@ namespace luvk_example
         }
 
     private:
-        void RegisterMeshes();
+        void CreateScene();
         void RegisterInputBindings();
     };
 } // namespace luvk_example

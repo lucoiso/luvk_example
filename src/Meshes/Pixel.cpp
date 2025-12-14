@@ -5,6 +5,9 @@
 #include "luvk_example/Meshes/Pixel.hpp"
 #include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
+#include <luvk/Modules/SwapChain.hpp>
+#include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Types/Material.hpp>
 
 using namespace luvk_example;
 
@@ -38,63 +41,102 @@ constexpr auto g_FragmentShader = R"(
     }
 )";
 
-constexpr std::array<glm::vec2, 12> g_Vertices{{{0.01F,      0.F},
-                                                {0.00866F,   0.005F},
-                                                {0.005F,     0.00866F},
-                                                {0.F,        0.01F},
-                                                {-0.005F,    0.00866F},
-                                                {-0.00866F,  0.005F},
-                                                {-0.01F,     0.F},
-                                                {-0.00866F,  -0.005F},
-                                                {-0.005F,    -0.00866F},
-                                                {0.F,        -0.01F},
-                                                {0.005F,     -0.00866F},
-                                                {0.00866F,   -0.005F}}};
+constexpr std::array<glm::vec2, 13> g_PixVertices{{
+    {0.f, 0.f},
+    {0.01f, 0.f},
+    {0.00866f, 0.005f},
+    {0.005f, 0.00866f},
+    {0.f, 0.01f},
+    {-0.005f, 0.00866f},
+    {-0.00866f, 0.005f},
+    {-0.01f, 0.f},
+    {-0.00866f, -0.005f},
+    {-0.005f, -0.00866f},
+    {0.f, -0.01f},
+    {0.005f, -0.00866f},
+    {0.00866f, -0.005f}
+}};
 
-constexpr std::array<std::uint16_t, 30> g_Indices{{0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 6, 0, 6, 7, 0, 7, 8, 0, 8, 9, 0, 9, 10, 0, 10, 11}};
+constexpr std::array<std::uint16_t, 36> g_PixIndices{{
+    0,
+    1,
+    2,
+    0,
+    2,
+    3,
+    0,
+    3,
+    4,
+    0,
+    4,
+    5,
+    0,
+    5,
+    6,
+    0,
+    6,
+    7,
+    0,
+    7,
+    8,
+    0,
+    8,
+    9,
+    0,
+    9,
+    10,
+    0,
+    10,
+    11,
+    0,
+    11,
+    12,
+    0,
+    12,
+    1
+}};
 
+constexpr std::array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
+                                VkVertexInputBindingDescription{1, sizeof(luvk::Mesh::InstanceInfo), VK_VERTEX_INPUT_RATE_INSTANCE}};
 
-constexpr std::array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2),          VK_VERTEX_INPUT_RATE_VERTEX},
-                                VkVertexInputBindingDescription{1, sizeof(luvk::MeshInstance), VK_VERTEX_INPUT_RATE_INSTANCE}};
+constexpr std::array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+                                  VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Position)},
+                                  VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Rotation) + sizeof(float) * 2},
+                                  VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, Color)}};
 
-constexpr std::array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT,       0},
-                                  VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT,       offsetof(luvk::MeshInstance, Offset)},
-                                  VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT,          offsetof(luvk::MeshInstance, Angle)},
-                                  VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::MeshInstance, Color)}};
-
-Pixel::Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
-             const std::shared_ptr<luvk::Device>& Device,
-             const std::shared_ptr<luvk::SwapChain>& Swap)
-    : m_Registry(std::move(Registry)),
-      m_Pipeline(std::make_shared<luvk::Pipeline>(Device))
+Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
+             const std::shared_ptr<luvk::SwapChain>& Swap,
+             const std::shared_ptr<luvk::Memory>&    Memory)
+    : Mesh(Device, Memory)
 {
-    m_Pipeline->CreateGraphicsPipeline({.Extent = Swap->GetExtent(),
-                                        .ColorFormats = std::array{Swap->GetCreationArguments().Format},
-                                        .RenderPass = Swap->GetRenderPass(),
-                                        .Subpass = 0,
-                                        .VertexShader = luvk::CompileGLSLToSPIRV(g_VertexShader, EShLangVertex),
-                                        .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
-                                        .SetLayouts = {},
-                                        .Bindings = g_Bindings,
-                                        .Attributes = g_Attributes,
-                                        .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                        .CullMode = VK_CULL_MODE_NONE});
+    const auto Pipeline = std::make_shared<luvk::Pipeline>(Device);
 
-    m_Index = m_Registry->RegisterMesh(std::as_bytes(std::span{g_Vertices}),
-                                       std::as_bytes(std::span{g_Indices}),
-                                       VK_NULL_HANDLE,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       {},
-                                       m_Pipeline);
+    Pipeline->CreateGraphicsPipeline({.Extent = Swap->GetExtent(),
+                                      .ColorFormats = std::array{Swap->GetCreationArguments().Format},
+                                      .RenderPass = Swap->GetRenderPass(),
+                                      .VertexShader = luvk::CompileGLSLToSPIRV(g_VertexShader, EShLangVertex),
+                                      .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
+                                      .Bindings = g_Bindings,
+                                      .Attributes = g_Attributes,
+                                      .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                      .CullMode = VK_CULL_MODE_NONE});
 
-    m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_Index);
+    const auto Mat = std::make_shared<luvk::Material>();
+    Mat->Initialize(Device, nullptr, Memory, Pipeline);
+    SetMaterial(Mat);
+
+    UploadVertices(std::as_bytes(std::span{g_PixVertices}), std::size(g_PixVertices));
+    UploadIndices(std::span{g_PixIndices});
 }
 
-void Pixel::AddInstance(glm::vec2 const& Position)
+void Pixel::AddInstance(const glm::vec2& Position)
 {
-    m_Instances.push_back(luvk::MeshRegistry::InstanceInfo{.XForm = {.Position = {Position.x, Position.y, 0.F}}, .Color = {1.F, 1.F, 1.F, 1.F}});
-    m_Registry->UpdateInstances(m_Index, m_Instances);
+    luvk::Mesh::InstanceInfo Inst{};
+    Inst.XForm.Position[0] = Position.x;
+    Inst.XForm.Position[1] = Position.y;
+    Inst.XForm.Rotation[2] = 0.F;
+    Inst.Color             = {1.F, 1.F, 1.F, 1.F};
+
+    m_LocalInstances.push_back(Inst);
+    UpdateInstances(std::as_bytes(std::span{m_LocalInstances}), static_cast<std::uint32_t>(std::size(m_LocalInstances)));
 }

@@ -6,7 +6,7 @@
 
 using namespace luvk_example;
 
-void InputManager::BindEvent(const Uint32 Type,
+void InputManager::BindEvent(const Uint32                            Type,
                              std::function<void(const SDL_Event&)>&& Callback)
 {
     auto [Iterator, Inserted] = m_Bindings.try_emplace(Type, EventCallbacks{});
@@ -21,22 +21,22 @@ void InputManager::ProcessEvents()
     {
         switch (Event.type)
         {
-            case SDL_QUIT:
+        case SDL_QUIT:
             {
                 m_Running = false;
                 break;
             }
-            case SDL_KEYDOWN:
+        case SDL_KEYDOWN:
             {
                 m_PressedKeys.insert(Event.key.keysym.sym);
                 break;
             }
-            case SDL_KEYUP:
+        case SDL_KEYUP:
             {
                 m_PressedKeys.erase(Event.key.keysym.sym);
                 break;
             }
-            case SDL_MOUSEBUTTONDOWN:
+        case SDL_MOUSEBUTTONDOWN:
             {
                 if (Event.button.button == SDL_BUTTON_LEFT)
                 {
@@ -44,7 +44,7 @@ void InputManager::ProcessEvents()
                 }
                 break;
             }
-            case SDL_MOUSEBUTTONUP:
+        case SDL_MOUSEBUTTONUP:
             {
                 if (Event.button.button == SDL_BUTTON_LEFT)
                 {
@@ -52,7 +52,7 @@ void InputManager::ProcessEvents()
                 }
                 break;
             }
-            default: break;
+        default: break;
         }
 
         InvokeCallbacks(Event.type, Event);

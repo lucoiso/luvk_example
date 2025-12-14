@@ -4,36 +4,45 @@
 
 #pragma once
 
-#include <memory>
-#include <SDL2/SDL.h>
-#include "ImGuiBackendSDL2.hpp"
-#include "ImGuiMesh.hpp"
+#include "luvk_example/UserInterface/ImGuiLayerBase.hpp"
+#include <string>
+#include <vector>
+#include <volk/volk.h>
+
+namespace luvk
+{
+    class Image;
+    class Sampler;
+    class Pipeline;
+    class DescriptorSet;
+} // namespace luvk
 
 namespace luvk_example
 {
-    class ImGuiLayer
+    class ImGuiLayer : public ImGuiLayerBase
     {
-        ImGuiBackendSDL2 m_SdlBackend{};
-        std::unique_ptr<ImGuiMesh> m_Mesh{};
-        bool m_Initialized{false};
+        bool        m_CompileSuccess{true};
+        std::string m_ShaderCode;
+        std::string m_StatusMessage{"Ready"};
+        float       m_TotalTime{0.0f};
+
+        std::shared_ptr<luvk::Image>         m_PreviewImage{};
+        std::shared_ptr<luvk::Sampler>       m_PreviewSampler{};
+        VkRenderPass                         m_PreviewRenderPass{VK_NULL_HANDLE};
+        VkFramebuffer                        m_PreviewFramebuffer{VK_NULL_HANDLE};
+        std::shared_ptr<luvk::Pipeline>      m_PreviewPipeline{};
+        std::shared_ptr<luvk::DescriptorSet> m_TextureID{};
 
     public:
-        constexpr ImGuiLayer() = default;
+        void InitializeEditorResources();
+        void Draw() override;
+        void UpdatePreview(const VkCommandBuffer& Cmd);
 
-        bool Initialize(SDL_Window* Window,
-                        std::shared_ptr<luvk::MeshRegistry> const& Registry,
-                        std::shared_ptr<luvk::Device> const& Device,
-                        std::shared_ptr<luvk::SwapChain> const& Swap,
-                        std::shared_ptr<luvk::Memory> const& Memory);
+    private:
+        void CompileShader();
+        void CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpirv);
 
-        void               Shutdown();
-        void               NewFrame(float DeltaTime) const;
-        void               Render(const VkCommandBuffer& Cmd) const;
-        [[nodiscard]] bool ProcessEvent(const SDL_Event& Event) const;
-
-        [[nodiscard]] constexpr bool IsInitialized() const noexcept
-        {
-            return m_Initialized;
-        }
+        static int InputTextCallback(struct ImGuiInputTextCallbackData* Data);
+        void       TransitionImageLayout(VkImageLayout OldLayout, VkImageLayout NewLayout) const;
     };
 } // namespace luvk_example

@@ -3,9 +3,13 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Meshes/Cube.hpp"
-#include <array>
 #include <glm/gtc/matrix_transform.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
+#include <luvk/Modules/SwapChain.hpp>
+#include <luvk/Resources/Buffer.hpp>
+#include <luvk/Resources/DescriptorSet.hpp>
+#include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Types/Material.hpp>
 
 using namespace luvk_example;
 
@@ -16,10 +20,10 @@ constexpr auto g_MeshShader = R"(
     layout(local_size_x = 1) in;
     layout(triangles, max_vertices = 8, max_primitives = 12) out;
 
-    layout(push_constant) uniform Push
+    layout(set = 0, binding = 0) uniform UBO
     {
         mat4 mvp;
-    } pc;
+    } ubo;
 
     struct PrimData
     {
@@ -52,7 +56,7 @@ constexpr auto g_MeshShader = R"(
 
         for (uint v = 0; v < 8; ++v)
         {
-            gl_MeshVerticesEXT[v].gl_Position = pc.mvp * vec4(positions[v], 1.0);
+            gl_MeshVerticesEXT[v].gl_Position = ubo.mvp * vec4(positions[v], 1.0);
         }
 
         for (uint face = 0; face < 6; ++face)
@@ -84,16 +88,21 @@ constexpr auto g_FragmentShader = R"(
     }
 )";
 
-constexpr VkPushConstantRange g_ConstantRange{VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(glm::mat4)};
+constexpr VkDescriptorSetLayoutBinding g_UboBinding{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_MESH_BIT_EXT, nullptr};
 
-Cube::Cube(const std::shared_ptr<luvk::MeshRegistry>& Registry,
-           const std::shared_ptr<luvk::Device>& Device,
-           const std::shared_ptr<luvk::SwapChain>& Swap,
-           const std::shared_ptr<luvk::Memory>& Memory)
-    : m_Registry(Registry),
+Cube::Cube(const std::shared_ptr<luvk::Device>&         Device,
+           const std::shared_ptr<luvk::SwapChain>&      Swap,
+           const std::shared_ptr<luvk::Memory>&         Memory,
+           const std::shared_ptr<luvk::DescriptorPool>& Pool)
+    : Mesh(Device, Memory),
       m_Pipeline(std::make_shared<luvk::Pipeline>(Device)),
-      m_UBO(std::make_shared<luvk::Buffer>(Device, Memory))
+      m_UBO(std::make_shared<luvk::Buffer>(Device, Memory)),
+      m_Mat(std::make_shared<luvk::Material>())
 {
+    const auto Set = std::make_shared<luvk::DescriptorSet>(Device, Pool, Memory);
+    Set->CreateLayout({.Bindings = std::array{g_UboBinding}});
+    Set->Allocate();
+
     m_Pipeline->CreateMeshPipeline({.Extent = Swap->GetExtent(),
                                     .ColorFormats = std::array{Swap->GetCreationArguments().Format},
                                     .RenderPass = Swap->GetRenderPass(),
@@ -101,35 +110,30 @@ Cube::Cube(const std::shared_ptr<luvk::MeshRegistry>& Registry,
                                     .TaskShader = {},
                                     .MeshShader = luvk::CompileGLSLToSPIRV(g_MeshShader, EShLangMesh),
                                     .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
-                                    .SetLayouts = {},
-                                    .PushConstants = std::array{g_ConstantRange},
+                                    .SetLayouts = std::array{Set->GetLayout()},
                                     .CullMode = VK_CULL_MODE_NONE});
 
     m_UBO->CreateBuffer({.Name = "Cube Uniform",
                          .Size = sizeof(glm::mat4),
-                         .Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                         .Usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                          .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
 
-    m_Index = m_Registry->RegisterMesh({},
-                                       {},
-                                       VK_NULL_HANDLE,
-                                       nullptr,
-                                       nullptr,
-                                       nullptr,
-                                       m_UBO,
-                                       {},
-                                       m_Pipeline);
+    Set->UpdateBuffer(m_UBO->GetHandle(), m_UBO->GetSize(), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
 
-    m_Mesh = std::make_shared<luvk::Mesh>(m_Registry, m_Index);
+    m_Mat->SetPipeline(m_Pipeline);
+    m_Mat->SetDescriptorSet(Set);
+
+    SetMaterial(m_Mat);
+    SetDispatchCount(1, 1, 1);
 }
 
 void Cube::Update(const float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const
 {
     static constinit float Elapsed = 0.F;
-    Elapsed += DeltaTime;
+    Elapsed                        += DeltaTime;
 
     const glm::mat4 Model = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));
-    const glm::mat4 Mvp = Proj * View * Model;
+    m_Mvp                 = Proj * View * Model;
 
-    m_Registry->UpdateUniform(m_Index, std::as_bytes(std::span{ &Mvp, 1 }));
+    m_UBO->Upload(std::as_bytes(std::span{&m_Mvp, 1}));
 }

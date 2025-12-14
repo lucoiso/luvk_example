@@ -5,34 +5,26 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include <glm/glm.hpp>
-#include <luvk/Modules/Device.hpp>
-#include <luvk/Modules/MeshRegistry.hpp>
-#include <luvk/Modules/SwapChain.hpp>
-#include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Types/Mesh.hpp>
+
+namespace luvk
+{
+    class SwapChain;
+} // namespace luvk
 
 namespace luvk_example
 {
-    class Pixel
+    class Pixel : public luvk::Mesh
     {
-        std::shared_ptr<luvk::MeshRegistry> m_Registry{};
-        std::shared_ptr<luvk::Pipeline> m_Pipeline{};
-        std::size_t m_Index{};
-        std::shared_ptr<luvk::Mesh> m_Mesh{};
-        std::vector<luvk::MeshRegistry::InstanceInfo> m_Instances{};
+        std::vector<luvk::Mesh::InstanceInfo> m_LocalInstances{};
 
     public:
-        Pixel() = delete;
-        explicit Pixel(std::shared_ptr<luvk::MeshRegistry> Registry,
-                       const std::shared_ptr<luvk::Device>& Device,
-                       const std::shared_ptr<luvk::SwapChain>& Swap);
+        Pixel(const std::shared_ptr<luvk::Device>&    Device,
+              const std::shared_ptr<luvk::SwapChain>& Swap,
+              const std::shared_ptr<luvk::Memory>&    Memory);
 
-        void AddInstance(glm::vec2 const& Position);
-
-        [[nodiscard]] constexpr const std::shared_ptr<luvk::Mesh>& GetMesh() const noexcept
-        {
-            return m_Mesh;
-        }
+        void AddInstance(const glm::vec2& Position);
     };
 } // namespace luvk_example

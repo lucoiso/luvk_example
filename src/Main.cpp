@@ -2,6 +2,9 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
+#include <cstdio>
+#include <exception>
+#include <thread>
 #include "luvk_example/Core/Application.hpp"
 
 #ifdef main

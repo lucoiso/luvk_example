@@ -5,56 +5,49 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include <glm/glm.hpp>
-#include <luvk/Modules/DescriptorPool.hpp>
-#include <luvk/Modules/Device.hpp>
-#include <luvk/Modules/Memory.hpp>
-#include <luvk/Modules/MeshRegistry.hpp>
-#include <luvk/Modules/SwapChain.hpp>
-#include <luvk/Resources/Buffer.hpp>
-#include <luvk/Resources/DescriptorSet.hpp>
-#include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Types/Mesh.hpp>
+
+namespace luvk
+{
+    class Pipeline;
+    class Buffer;
+    class DescriptorPool;
+    class SwapChain;
+} // namespace luvk
 
 namespace luvk_example
 {
     struct alignas(16) Particle
     {
-        glm::vec2 Offset{};
-        float Angle{0.F};
-        float _pad1;
-        glm::vec4 Color{1.F, 1.F, 1.F, 1.F};
-        glm::vec2 Velocity{};
+        glm::vec2 Offset;
+        float     Angle;
+        float     _pad1;
+        glm::vec4 Color;
+        glm::vec2 Velocity;
         glm::vec2 _pad2;
     };
 
-    class Triangle
+    class Triangle : public luvk::Mesh
     {
-        std::shared_ptr<luvk::MeshRegistry> m_Registry{};
-        std::shared_ptr<luvk::Pipeline> m_GraphicsPipeline{};
         std::shared_ptr<luvk::Pipeline> m_ComputePipeline{};
-        std::shared_ptr<luvk::Buffer> m_ParticleBuffer{};
-        std::shared_ptr<luvk::Buffer> m_ComputeUBO{};
-        std::shared_ptr<luvk::DescriptorPool> m_DescriptorPool{};
-        std::shared_ptr<luvk::DescriptorSet> m_DescriptorSet{};
-        std::shared_ptr<luvk::Device> m_Device{};
-        std::size_t m_GraphicsIndex{};
-        std::size_t m_ComputeIndex{};
-        std::shared_ptr<luvk::Mesh> m_Mesh{};
-        std::vector<Particle> m_Particles{};
+        std::shared_ptr<luvk::Buffer>   m_ParticleBuffer{};
+        std::shared_ptr<luvk::Buffer>   m_ComputeUBO{};
+        std::shared_ptr<luvk::Material> m_GraphicsMat{};
+        std::shared_ptr<luvk::Material> m_ComputeMat{};
+        std::vector<Particle>           m_Particles{};
 
     public:
-        explicit Triangle(std::shared_ptr<luvk::MeshRegistry> Registry,
-                          const std::shared_ptr<luvk::Device>& Device,
-                          const std::shared_ptr<luvk::SwapChain>& Swap,
-                          const std::shared_ptr<luvk::Memory>& Memory);
+        Triangle(const std::shared_ptr<luvk::Device>&         Device,
+                 const std::shared_ptr<luvk::SwapChain>&      Swap,
+                 const std::shared_ptr<luvk::Memory>&         Memory,
+                 const std::shared_ptr<luvk::DescriptorPool>& Pool);
 
         void Update(float DeltaTime) const;
         void AddInstance(glm::vec2 const& Position);
 
-        [[nodiscard]] constexpr const std::shared_ptr<luvk::Mesh>& GetMesh() const noexcept
-        {
-            return m_Mesh;
-        }
+        void Compute(const VkCommandBuffer& Cmd) const;
+        void Draw(const VkCommandBuffer& Cmd, std::span<const std::byte> PushConstants = {}) const override;
     };
 } // namespace luvk_example
