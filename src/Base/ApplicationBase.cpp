@@ -4,7 +4,6 @@
 
 #include "luvk_example/Base/ApplicationBase.hpp"
 #include <execution>
-#include <iostream>
 #include <ostream>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/CommandPool.hpp>
@@ -99,7 +98,14 @@ void ApplicationBase::RegisterModules()
     m_ThreadPoolModule      = luvk::CreateModule<luvk::ThreadPool>();
     m_DescriptorPoolModule  = luvk::CreateModule<luvk::DescriptorPool>(m_DeviceModule);
 
-    m_Renderer->RegisterModules({m_DebugModule, m_DeviceModule, m_MemoryModule, m_SwapChainModule, m_CommandPoolModule, m_SynchronizationModule, m_ThreadPoolModule, m_DescriptorPoolModule});
+    m_Renderer->RegisterModules({m_DebugModule,
+                                 m_DeviceModule,
+                                 m_MemoryModule,
+                                 m_SwapChainModule,
+                                 m_CommandPoolModule,
+                                 m_SynchronizationModule,
+                                 m_ThreadPoolModule,
+                                 m_DescriptorPoolModule});
 }
 
 void ApplicationBase::SetupExtensions() const

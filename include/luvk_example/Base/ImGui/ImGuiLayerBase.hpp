@@ -6,7 +6,7 @@
 
 #include <memory>
 #include <SDL3/SDL.h>
-#include <volk/volk.h>
+#include <volk.h>
 #include "luvk_example/Base/ImGui/ImGuiBackendSDL.hpp"
 #include "luvk_example/Base/ImGui/ImGuiMesh.hpp"
 
