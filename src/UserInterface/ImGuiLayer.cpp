@@ -242,107 +242,9 @@ void ImGuiLayer::InitializeEditorResources()
 
 void ImGuiLayer::Draw()
 {
-    constexpr bool            OptFullscreen  = true;
-    static ImGuiDockNodeFlags DockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
-
-    ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoDocking;
-    if (OptFullscreen)
-    {
-        const ImGuiViewport* Viewport = ImGui::GetMainViewport();
-        ImGui::SetNextWindowPos(Viewport->WorkPos);
-        ImGui::SetNextWindowSize(Viewport->WorkSize);
-        ImGui::SetNextWindowViewport(Viewport->ID);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-        WindowFlags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-        WindowFlags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-    }
-
-    if (DockspaceFlags & ImGuiDockNodeFlags_PassthruCentralNode)
-    {
-        WindowFlags |= ImGuiWindowFlags_NoBackground;
-    }
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-    ImGui::Begin("DockSpace", nullptr, WindowFlags);
-    ImGui::PopStyleVar();
-
-    if (OptFullscreen)
-    {
-        ImGui::PopStyleVar(2);
-    }
-
-    const ImGuiID DockSpaceID = ImGui::GetID("MainDockSpace");
-    ImGui::DockSpace(DockSpaceID, ImVec2(0.0f, 0.0f), DockspaceFlags);
-
-    static bool FirstTime = true;
-    if (FirstTime)
-    {
-        FirstTime = false;
-
-        ImGui::DockBuilderRemoveNode(DockSpaceID);
-        ImGui::DockBuilderAddNode(DockSpaceID, DockspaceFlags | ImGuiDockNodeFlags_DockSpace);
-        ImGui::DockBuilderSetNodeSize(DockSpaceID, ImGui::GetMainViewport()->Size);
-
-        ImGuiID       DockMainID = DockSpaceID;
-        const ImGuiID DockLeftID = ImGui::DockBuilderSplitNode(DockMainID, ImGuiDir_Left, 0.30f, nullptr, &DockMainID);
-
-        ImGui::DockBuilderDockWindow("Shader Editor", DockLeftID);
-        ImGui::DockBuilderFinish(DockSpaceID);
-    }
-
-    ImGui::End();
-
-    ImGui::Begin("Shader Editor", nullptr, ImGuiWindowFlags_NoScrollbar);
-
-    if (ImGui::Button("Compile"))
-    {
-        CompileShader();
-    }
-
-    ImGui::SameLine();
-
-    if (m_CompileSuccess)
-    {
-        ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", m_StatusMessage.c_str());
-    }
-    else
-    {
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", m_StatusMessage.c_str());
-    }
-
-    ImGui::InputTextMultiline("##source",
-                              std::data(m_ShaderCode),
-                              m_ShaderCode.capacity() + 1,
-                              ImVec2(-FLT_MIN, -260.0f),
-                              ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AllowTabInput,
-                              InputTextCallback,
-                              &m_ShaderCode);
-
-    if (ImGui::Button("Reset"))
-    {
-        m_ShaderCode = g_DefaultFrag;
-        CompileShader();
-    }
-
-    ImGui::Separator();
-    ImGui::Text("Preview:");
-
-    if (const ImVec2 Avail = ImGui::GetContentRegionAvail();
-        m_TextureID && Avail.x > 0.0f && Avail.y > 0.0f)
-    {
-        if (Avail.x > 256.0f)
-        {
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (Avail.x - 256.0f) * 0.5f);
-            ImGui::Image(m_TextureID->GetHandle(), ImVec2(256.0f, 256.0f));
-        }
-        else
-        {
-            ImGui::Image(m_TextureID->GetHandle(), ImVec2(Avail.x, Avail.x));
-        }
-    }
-
-    ImGui::End();
+    DrawDockspace();
+    DrawEditor();
+    DrawTexture();
 }
 
 void ImGuiLayer::UpdatePreview(const VkCommandBuffer& Cmd)
@@ -423,6 +325,105 @@ void ImGuiLayer::UpdatePreview(const VkCommandBuffer& Cmd)
                          nullptr,
                          1,
                          &BarrierToShaderRead);
+}
+
+void ImGuiLayer::DrawDockspace() const
+{
+    constexpr ImGuiDockNodeFlags DockspaceFlags = ImGuiDockNodeFlags_PassthruCentralNode;
+
+    constexpr ImGuiWindowFlags WindowFlags = ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoTitleBar |
+            ImGuiWindowFlags_NoCollapse |
+            ImGuiWindowFlags_NoResize |
+            ImGuiWindowFlags_NoMove |
+            ImGuiWindowFlags_NoBringToFrontOnFocus |
+            ImGuiWindowFlags_NoNavFocus |
+            ImGuiWindowFlags_NoBackground;
+
+    const ImGuiViewport* Viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(Viewport->WorkPos);
+    ImGui::SetNextWindowSize(Viewport->WorkSize);
+    ImGui::SetNextWindowViewport(Viewport->ID);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+    ImGui::Begin("DockSpace", nullptr, WindowFlags);
+    ImGui::PopStyleVar(3);
+
+        const ImGuiID DockSpaceID = ImGui::GetID("MainDockSpace");
+        ImGui::DockSpace(DockSpaceID, ImVec2(0.0f, 0.0f), DockspaceFlags);
+
+        static std::once_flag InitFlag;
+        std::call_once(InitFlag,
+                       [&]
+                       {
+                           ImGui::DockBuilderRemoveNode(DockSpaceID);
+                           ImGui::DockBuilderAddNode(DockSpaceID, DockspaceFlags | ImGuiDockNodeFlags_DockSpace);
+                           ImGui::DockBuilderSetNodeSize(DockSpaceID, ImGui::GetMainViewport()->Size);
+
+                           ImGuiID       DockMainID = DockSpaceID;
+                           const ImGuiID DockLeftID = ImGui::DockBuilderSplitNode(DockMainID, ImGuiDir_Left, 0.30f, nullptr, &DockMainID);
+
+                           ImGui::DockBuilderDockWindow("Shader Editor", DockLeftID);
+                           ImGui::DockBuilderFinish(DockSpaceID);
+                       });
+
+    ImGui::End();
+}
+
+void ImGuiLayer::DrawEditor()
+{
+    ImGui::Begin("Shader Editor", nullptr, ImGuiWindowFlags_NoScrollbar);
+
+        if (ImGui::Button("Compile"))
+        {
+            CompileShader();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Reset"))
+        {
+            m_ShaderCode = g_DefaultFrag;
+            CompileShader();
+        }
+
+        if (m_CompileSuccess)
+        {
+            ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", m_StatusMessage.c_str());
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", m_StatusMessage.c_str());
+        }
+
+        if (const ImVec2 Avail = ImGui::GetContentRegionAvail();
+            Avail.x > 0.0f && Avail.y > 0.0f)
+        {
+            ImGui::InputTextMultiline("##source",
+                                      std::data(m_ShaderCode),
+                                      m_ShaderCode.capacity() + 1,
+                                      Avail,
+                                      ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AllowTabInput,
+                                      InputTextCallback,
+                                      &m_ShaderCode);
+        }
+
+    ImGui::End();
+}
+void ImGuiLayer::DrawTexture() const
+{
+    ImGui::Begin("Shader Preview", nullptr, ImGuiWindowFlags_NoScrollbar);
+
+        if (const ImVec2 Avail = ImGui::GetContentRegionAvail();
+            m_TextureID && Avail.x > 0.0f && Avail.y > 0.0f)
+        {
+            ImGui::Image(m_TextureID->GetHandle(), Avail);
+        }
+
+    ImGui::End();
 }
 
 void ImGuiLayer::PushStyle() const

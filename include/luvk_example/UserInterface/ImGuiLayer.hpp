@@ -39,6 +39,10 @@ namespace luvk_example
         void UpdatePreview(const VkCommandBuffer& Cmd);
 
     private:
+        void DrawDockspace()const;
+        void DrawEditor();
+        void DrawTexture() const;
+
         void PushStyle() const;
         void CompileShader();
         void CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpirv);
