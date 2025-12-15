@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <luvk/Types/Vector.hpp>
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
 
 namespace luvk_example
 {

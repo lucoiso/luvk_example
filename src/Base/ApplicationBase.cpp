@@ -40,6 +40,8 @@ ApplicationBase::ApplicationBase(const std::uint32_t Width, const std::uint32_t 
                                 static_cast<std::int32_t>(m_Width),
                                 static_cast<std::int32_t>(m_Height),
                                 SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+
+    SDL_StartTextInput(m_Window);
 }
 
 ApplicationBase::~ApplicationBase()

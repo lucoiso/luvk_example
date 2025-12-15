@@ -3,6 +3,7 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Components/Camera.hpp"
+#include <imgui.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include "luvk_example/Components/InputManager.hpp"
 
@@ -10,6 +11,11 @@ using namespace luvk_example;
 
 void Camera::Update(const float DeltaTime, const InputManager& Input)
 {
+    if (ImGui::GetIO().WantCaptureMouse)
+    {
+        return;
+    }
+
     if (Input.IsKeyPressed(SDLK_LEFT))
     {
         m_Position.x -= m_Speed * DeltaTime;
