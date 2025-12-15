@@ -7,14 +7,14 @@
 #include <functional>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
-#include <SDL2/SDL.h>
+#include <luvk/Types/Vector.hpp>
+#include <SDL3/SDL.h>
 
 namespace luvk_example
 {
     class InputManager
     {
-        using EventCallbacks = std::vector<std::function<void(const SDL_Event&)>>;
+        using EventCallbacks = luvk::Vector<std::function<void(const SDL_Event&)>>;
 
         std::unordered_map<Uint32, EventCallbacks> m_Bindings{};
         std::unordered_set<SDL_Keycode>            m_PressedKeys{};

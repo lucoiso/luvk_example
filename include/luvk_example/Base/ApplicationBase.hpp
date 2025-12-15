@@ -5,7 +5,7 @@
 #pragma once
 
 #include <memory>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include "luvk_example/Components/InputManager.hpp"
 
 namespace luvk

@@ -13,79 +13,109 @@
 
 using namespace luvk_example;
 
+constexpr auto g_TaskShader = R"(
+struct DummyPayLoad {
+    uint dummyData;
+};
+
+groupshared DummyPayLoad dummyPayLoad;
+
+[shader("amplification")]
+[numthreads(1, 1, 1)]
+void entry_amplification()
+{
+    DispatchMesh(1, 1, 1, dummyPayLoad);
+}
+)";
+
 constexpr auto g_MeshShader = R"(
-    #version 460
-    #extension GL_EXT_mesh_shader : enable
+[[vk::binding(0, 0)]] cbuffer Uniforms
+{
+    float4x4 modelViewProjection;
+}
 
-    layout(local_size_x = 1) in;
-    layout(triangles, max_vertices = 8, max_primitives = 12) out;
+[[vk::binding(1, 0)]] RWStructuredBuffer<float> outputBuffer;
 
-    layout(set = 0, binding = 0) uniform UBO
+const static float3 cube_positions[8] = {
+    float3(-0.5, -0.5,  0.5),
+    float3( 0.5, -0.5,  0.5),
+    float3( 0.5,  0.5,  0.5),
+    float3(-0.5,  0.5,  0.5),
+    float3(-0.5, -0.5, -0.5),
+    float3( 0.5, -0.5, -0.5),
+    float3( 0.5,  0.5, -0.5),
+    float3(-0.5,  0.5, -0.5)
+};
+
+const static uint3 cube_indices[12] = {
+    uint3(0, 1, 2), uint3(0, 2, 3),
+    uint3(5, 4, 7), uint3(5, 7, 6),
+    uint3(1, 5, 6), uint3(1, 6, 2),
+    uint3(4, 0, 3), uint3(4, 3, 7),
+    uint3(3, 2, 6), uint3(3, 6, 7),
+    uint3(4, 5, 1), uint3(4, 1, 0)
+};
+
+const static float3 cube_colors[6] = {
+    float3(1.0, 0.0, 0.0),
+    float3(0.0, 1.0, 0.0),
+    float3(0.0, 0.0, 1.0),
+    float3(1.0, 1.0, 0.0),
+    float3(1.0, 0.0, 1.0),
+    float3(0.0, 1.0, 1.0)
+};
+
+struct Vertex
+{
+    float4 pos : SV_Position;
+    float3 color : Color;
+};
+
+const static uint MAX_VERTS = 36;
+const static uint MAX_PRIMS = 12;
+
+[outputtopology("triangle")]
+[numthreads(12, 1, 1)]
+[shader("mesh")]
+void meshMain(
+    in uint tig : SV_GroupIndex,
+    OutputVertices<Vertex, MAX_VERTS> verts,
+    OutputIndices<uint3, MAX_PRIMS> triangles)
+{
+    const uint numVertices = MAX_VERTS;
+    const uint numPrimitives = MAX_PRIMS;
+    SetMeshOutputCounts(numVertices, numPrimitives);
+
+    if(tig < numPrimitives)
     {
-        mat4 mvp;
-    } ubo;
+        uint baseVertexIndex = tig * 3;
+        triangles[tig] = baseVertexIndex + uint3(0, 1, 2);
 
-    struct PrimData
-    {
-        vec3 color;
-    };
+        uint3 indices = cube_indices[tig];
+        float3 faceColor = cube_colors[tig / 2];
 
-    layout(location = 0) perprimitiveEXT out PrimData prim[];
-
-    void main()
-    {
-        const vec3 positions[8] = vec3[8](vec3(-0.5,-0.5,-0.5),
-                                         vec3(0.5,-0.5,-0.5),
-                                         vec3(0.5,0.5,-0.5),
-                                         vec3(-0.5,0.5,-0.5),
-                                         vec3(-0.5,-0.5,0.5),
-                                         vec3(0.5,-0.5,0.5),
-                                         vec3(0.5,0.5,0.5),
-                                         vec3(-0.5,0.5,0.5));
-
-        const uint indices[36] = uint[36](0,1,2, 2,3,0,
-                                          4,5,6, 6,7,4,
-                                          0,1,5, 5,4,0,
-                                          2,3,7, 7,6,2,
-                                          1,2,6, 6,5,1,
-                                          3,0,4, 4,7,3);
-
-        const vec3 colors[6] = vec3[6](vec3(1,0,0), vec3(0,1,0), vec3(0,0,1), vec3(1,1,0), vec3(1,0,1), vec3(0,1,1));
-
-        SetMeshOutputsEXT(8, 12);
-
-        for (uint v = 0; v < 8; ++v)
+        for(int i = 0; i < 3; i++)
         {
-            gl_MeshVerticesEXT[v].gl_Position = ubo.mvp * vec4(positions[v], 1.0);
-        }
-
-        for (uint face = 0; face < 6; ++face)
-        {
-            for (uint t = 0; t < 2; ++t)
-            {
-                uint primId = face * 2 + t;
-                uint base = primId * 3;
-                gl_PrimitiveTriangleIndicesEXT[primId] = uvec3(indices[base], indices[base + 1], indices[base + 2]);
-                prim[primId].color = colors[face];
-            }
+            uint vertexIndex = indices[i];
+            float3 position = cube_positions[vertexIndex];
+            float4 transformedPos = mul(modelViewProjection, float4(position, 1.0));
+            verts[baseVertexIndex + i] = {transformedPos, faceColor};
         }
     }
+}
 )";
 
 constexpr auto g_FragmentShader = R"(
-    #version 460
-    #extension GL_EXT_mesh_shader : enable
+struct PrimData
+{
+    float3 color : COLOR0;
+};
 
-    layout(location = 0) out vec4 outColor;
-    layout(location = 0) perprimitiveEXT in PrimData
-    {
-        vec3 color;
-    } prim;
-
-    void main()
-    {
-        outColor = vec4(prim.color, 1.0);
-    }
+[shader("fragment")]
+float4 entry_fragment(PrimData input) : SV_Target
+{
+    return float4(input.color, 1.0f);
+}
 )";
 
 constexpr VkDescriptorSetLayoutBinding g_UboBinding{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_MESH_BIT_EXT, nullptr};
@@ -100,17 +130,17 @@ Cube::Cube(const std::shared_ptr<luvk::Device>&         Device,
       m_Mat(std::make_shared<luvk::Material>())
 {
     const auto Set = std::make_shared<luvk::DescriptorSet>(Device, Pool, Memory);
-    Set->CreateLayout({.Bindings = std::array{g_UboBinding}});
+    Set->CreateLayout({.Bindings = luvk::Array{g_UboBinding}});
     Set->Allocate();
 
     m_Pipeline->CreateMeshPipeline({.Extent = Swap->GetExtent(),
-                                    .ColorFormats = std::array{Swap->GetCreationArguments().Format},
+                                    .ColorFormats = luvk::Array{Swap->GetCreationArguments().Format},
                                     .RenderPass = Swap->GetRenderPass(),
                                     .Subpass = 0,
-                                    .TaskShader = {},
-                                    .MeshShader = luvk::CompileGLSLToSPIRV(g_MeshShader, EShLangMesh),
-                                    .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
-                                    .SetLayouts = std::array{Set->GetLayout()},
+                                    .TaskShader = luvk::CompileShader(g_TaskShader),
+                                    .MeshShader = luvk::CompileShader(g_MeshShader),
+                                    .FragmentShader = luvk::CompileShader(g_FragmentShader),
+                                    .SetLayouts = luvk::Array{Set->GetLayout()},
                                     .CullMode = VK_CULL_MODE_NONE});
 
     m_UBO->CreateBuffer({.Name = "Cube Uniform",

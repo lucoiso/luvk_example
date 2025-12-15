@@ -4,19 +4,19 @@
 
 #pragma once
 
-#include <array>
 #include <imgui.h>
-#include <SDL2/SDL.h>
+#include <luvk/Types/Array.hpp>
+#include <SDL3/SDL.h>
 
 namespace luvk_example
 {
-    class ImGuiBackendSDL2
+    class ImGuiBackendSDL
     {
-        SDL_Window*                                     m_Window{};
-        std::array<SDL_Cursor*, ImGuiMouseCursor_COUNT> m_MouseCursors{};
+        SDL_Window*                                      m_Window{};
+        luvk::Array<SDL_Cursor*, ImGuiMouseCursor_COUNT> m_MouseCursors{};
 
     public:
-        constexpr ImGuiBackendSDL2() = default;
+        constexpr ImGuiBackendSDL() = default;
 
         [[nodiscard]] bool Init(SDL_Window* Window);
         void               Shutdown();

@@ -3,7 +3,6 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Meshes/Triangle.hpp"
-#include <array>
 #include <random>
 #include <glm/gtc/constants.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
@@ -11,88 +10,89 @@
 #include <luvk/Resources/Buffer.hpp>
 #include <luvk/Resources/DescriptorSet.hpp>
 #include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Types/Array.hpp>
 #include <luvk/Types/Material.hpp>
 
 using namespace luvk_example;
 
 constexpr auto g_VertexShader = R"(
-    #version 450
+struct VSInput {
+	float2 inPos : POSITION;
+	float2 offset : TEXCOORD0;
+	float angle : TEXCOORD1;
+	float4 color : COLOR0;
+};
 
-    layout(location = 0) in vec2 inPos;
-    layout(location = 1) in vec2 offset;
-    layout(location = 2) in float angle;
-    layout(location = 3) in vec4 color;
+struct VSOutput {
+	float4 vColor : COLOR;
+	float4 Pos : SV_Position;
+};
 
-    layout(location = 0) out vec4 vColor;
-
-    void main()
-    {
-       mat2 R = mat2(cos(angle), -sin(angle),
-                     sin(angle),  cos(angle));
-       vec2 pos = R * inPos + offset;
-       gl_Position = vec4(pos, 0.0, 1.0);
-       vColor = color;
-    }
+[shader("vertex")]
+VSOutput main(VSInput input)
+{
+	VSOutput output;
+	float2x2 R = float2x2(cos(input.angle), -sin(input.angle),
+						  sin(input.angle), cos(input.angle));
+	float2 pos = mul(R, input.inPos) + input.offset;
+	output.Pos = float4(pos, 0.0f, 1.0f);
+	output.vColor = input.color;
+	return output;
+}
 )";
 
 constexpr auto g_FragmentShader = R"(
-    #version 450
+struct VSOutput {
+	float4 vColor : COLOR;
+};
 
-    layout(location = 0) in vec4 vColor;
-    layout(location = 0) out vec4 outColor;
-
-    void main()
-    {
-       outColor = vColor;
-    }
+[shader("fragment")]
+float4 main(VSOutput input) : SV_Target
+{
+	return input.vColor;
+}
 )";
 
 constexpr auto g_ComputeShader = R"(
-    #version 450
+struct Particle {
+    float2 offset;
+    float angle;
+    float4 color;
+    float2 velocity;
+};
 
-    layout(local_size_x = 64) in;
+struct PC {
+    float dt;
+};
 
-    struct Particle
-    {
-       vec2 offset;
-       float angle;
-       vec4 color;
-       vec2 velocity;
-    };
+[[vk::push_constant]] PC pc;
+[[vk::binding(0,0)]] RWStructuredBuffer<Particle> PartData;
 
-    layout(std430, binding = 0) buffer PartData
-    {
-       Particle particles[];
-    };
-
-    layout(push_constant) uniform PC
-    {
-       float dt;
-    } pc;
-
-    void main()
-    {
-       uint id = gl_GlobalInvocationID.x;
-       particles[id].angle += pc.dt * 2.0;
-    }
+[shader("compute")]
+[numthreads(64, 1, 1)]
+void main(uint3 gl_GlobalInvocationID : SV_DispatchThreadID)
+{
+    uint id = gl_GlobalInvocationID.x;
+    PartData[id].angle += pc.dt * 2.0f;
+}
 )";
 
-constexpr std::array<glm::vec2, 3> g_Vertices{{{-0.05F, -0.05F},
-                                               {0.05F, -0.05F},
-                                               {0.F, 0.1F}}};
+constexpr luvk::Array<glm::vec2, 3> g_Vertices{glm::vec2{-0.05F, -0.05F},
+                                               glm::vec2{0.05F, -0.05F},
+                                               glm::vec2{0.F, 0.1F}};
 
-constexpr std::array<std::uint16_t, 3> g_Indices{{0, 1, 2}};
+constexpr luvk::Array<std::uint16_t, 3> g_Indices{{0, 1, 2}};
 
 constexpr VkDescriptorSetLayoutBinding g_DescriptorBinding{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
 constexpr VkDescriptorPoolSize         g_DescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
 
-constexpr std::array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
-                                VkVertexInputBindingDescription{1, sizeof(Particle), VK_VERTEX_INPUT_RATE_INSTANCE}};
+constexpr luvk::Array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
+                                 VkVertexInputBindingDescription{1, sizeof(Particle), VK_VERTEX_INPUT_RATE_INSTANCE}};
 
-constexpr std::array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
-                                  VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Particle, Offset)},
-                                  VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(Particle, Angle)},
-                                  VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, Color)}};
+constexpr luvk::Array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+                                   VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Particle, Offset)},
+                                   VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(Particle, Angle)},
+                                   VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, Color)}};
 
 constexpr VkPushConstantRange g_ConstantRange{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float)};
 
@@ -108,25 +108,25 @@ Triangle::Triangle(const std::shared_ptr<luvk::Device>&         Device,
       m_ComputeMat(std::make_shared<luvk::Material>())
 {
     const auto Set = std::make_shared<luvk::DescriptorSet>(Device, Pool, Memory);
-    Set->CreateLayout({.Bindings = std::array{g_DescriptorBinding}});
+    Set->CreateLayout({.Bindings = luvk::Array{g_DescriptorBinding}});
     Set->Allocate();
 
     const auto GraphicsPipeline = std::make_shared<luvk::Pipeline>(Device);
     GraphicsPipeline->CreateGraphicsPipeline({.Extent = Swap->GetExtent(),
-                                              .ColorFormats = std::array{Swap->GetCreationArguments().Format},
+                                              .ColorFormats = luvk::Array{Swap->GetCreationArguments().Format},
                                               .RenderPass = Swap->GetRenderPass(),
                                               .Subpass = 0,
-                                              .VertexShader = luvk::CompileGLSLToSPIRV(g_VertexShader, EShLangVertex),
-                                              .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
-                                              .SetLayouts = std::array{Set->GetLayout()},
+                                              .VertexShader = luvk::CompileShader(g_VertexShader),
+                                              .FragmentShader = luvk::CompileShader(g_FragmentShader),
+                                              .SetLayouts = luvk::Array{Set->GetLayout()},
                                               .Bindings = g_Bindings,
                                               .Attributes = g_Attributes,
                                               .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                               .CullMode = VK_CULL_MODE_NONE});
 
-    m_ComputePipeline->CreateComputePipeline({.ComputeShader = luvk::CompileGLSLToSPIRV(g_ComputeShader, EShLangCompute),
-                                              .SetLayouts = std::array{Set->GetLayout()},
-                                              .PushConstants = std::array{g_ConstantRange}});
+    m_ComputePipeline->CreateComputePipeline({.ComputeShader = luvk::CompileShader(g_ComputeShader),
+                                              .SetLayouts = luvk::Array{Set->GetLayout()},
+                                              .PushConstants = luvk::Array{g_ConstantRange}});
 
     m_ParticleBuffer->CreateBuffer({.Name = "Particle VTX",
                                     .Size = sizeof(Particle) * 1000,
@@ -175,8 +175,8 @@ void Triangle::Draw(const VkCommandBuffer& Cmd, std::span<const std::byte> PushC
 {
     m_GraphicsMat->Bind(Cmd);
 
-    const std::array                      Buffers = {m_VertexBuffer->GetHandle(), m_ParticleBuffer->GetHandle()};
-    constexpr std::array<VkDeviceSize, 2> Offsets = {0, 0};
+    const luvk::Array                      Buffers = {m_VertexBuffer->GetHandle(), m_ParticleBuffer->GetHandle()};
+    constexpr luvk::Array<VkDeviceSize, 2> Offsets = {0, 0};
 
     vkCmdBindVertexBuffers(Cmd, 0, static_cast<uint32_t>(std::size(Buffers)), std::data(Buffers), std::data(Offsets));
 

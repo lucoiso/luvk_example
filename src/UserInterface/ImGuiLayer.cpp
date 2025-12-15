@@ -3,7 +3,6 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/UserInterface/ImGuiLayer.hpp"
-#include <array>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <luvk/Libraries/ShaderCompiler.hpp>
@@ -12,43 +11,44 @@
 #include <luvk/Resources/Image.hpp>
 #include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Resources/Sampler.hpp>
+#include <luvk/Types/Array.hpp>
 
 using namespace luvk_example;
 
 constexpr auto g_DefaultFrag = R"(
-#version 450
+struct VSOutput {
+    float2 fragUV;
+};
 
-layout(location = 0) out vec4 outColor;
-layout(location = 0) in vec2 fragUV;
-
-layout(push_constant) uniform PC
-{
+struct PC {
     float time;
-} pc;
+};
 
-#define PIXEL_SIZE_FAC 700.0
-#define BLACK (0.6 * vec4(79.0/255.0, 99.0/255.0, 103.0/255.0, 1.0/0.6))
+[[vk::push_constant]] PC pc;
 
-const float VortSpeed  = 1.0;
-const float MidFlash   = 0.0;
-const float VortOffset = 0.0;
+#define PIXEL_SIZE_FAC 700.0f
+#define BLACK (0.6f * float4(79.0f/255.0f, 99.0f/255.0f, 103.0f/255.0f, 1.0f/0.6f))
 
-const vec4 Colour1 = vec4(0.9960784, 0.3725490, 0.3333333, 1.0);
-const vec4 Colour2 = vec4(0.0, 0.6156863, 1.0, 1.0);
+static const float VortSpeed = 1.0f;
+static const float MidFlash = 0.0f;
+static const float VortOffset = 0.0f;
 
-vec4 Easing(vec4 t, float power)
+static const float4 Colour1 = float4(0.9960784f, 0.3725490f, 0.3333333f, 1.0f);
+static const float4 Colour2 = float4(0.0f, 0.6156863f, 1.0f, 1.0f);
+
+float4 Easing(float4 t, float power)
 {
-    return vec4(
-        pow(t.x, power),
-        pow(t.y, power),
-        pow(t.z, power),
-        pow(t.w, power)
+    return float4(
+       pow(t.x, power),
+       pow(t.y, power),
+       pow(t.z, power),
+       pow(t.w, power)
     );
 }
 
-vec4 Effect(vec2 uv, float scale)
+float4 Effect(float2 uv, float scale)
 {
-    uv = floor(uv * (PIXEL_SIZE_FAC * 0.5)) / (PIXEL_SIZE_FAC * 0.5);
+    uv = floor(uv * (PIXEL_SIZE_FAC * 0.5f)) / (PIXEL_SIZE_FAC * 0.5f);
     uv /= scale;
 
     float uvLen = length(uv);
@@ -56,86 +56,92 @@ vec4 Effect(vec2 uv, float scale)
     float speed = pc.time * VortSpeed;
 
     float angle =
-        atan(uv.y, uv.x)
-        + (2.2 + 0.4 * min(6.0, speed)) * uvLen
-        - 1.0
-        - speed * 0.05
-        - min(6.0, speed) * speed * 0.02
-        + VortOffset;
+       atan2(uv.y, uv.x)
+       + (2.2f + 0.4f * min(6.0f, speed)) * uvLen
+       - 1.0f
+       - speed * 0.05f
+       - min(6.0f, speed) * speed * 0.02f
+       + VortOffset;
 
-    vec2 sv = vec2(
-        uvLen * cos(angle),
-        uvLen * sin(angle)
+    float2 sv = float2(
+       uvLen * cos(angle),
+       uvLen * sin(angle)
     );
 
-    sv *= 30.0;
-    speed = pc.time * 6.0 * VortSpeed + VortOffset + 5.0;
+    sv *= 30.0f;
+    speed = pc.time * 6.0f * VortSpeed + VortOffset + 5.0f;
 
-    vec2 uv2 = vec2(sv.x + sv.y);
+    float2 uv2 = float2(sv.x + sv.y);
 
     for (int i = 0; i < 5; ++i)
     {
-        uv2 += sin(max(sv.x, sv.y)) + sv;
+       uv2 += sin(max(sv.x, sv.y)) + sv;
 
-        sv += 0.5 * vec2(
-            cos(5.1123314 + 0.353 * uv2.y + speed * 0.131121),
-            sin(uv2.x - 0.113 * speed)
-        );
+       sv += 0.5f * float2(
+          cos(5.1123314f + 0.353f * uv2.y + speed * 0.131121f),
+          sin(uv2.x - 0.113f * speed)
+       );
 
-        sv -= 1.0 * cos(sv.x + sv.y)
-            - 1.0 * sin(sv.x * 0.711 - sv.y);
+       sv -= 1.0f * cos(sv.x + sv.y)
+          - 1.0f * sin(sv.x * 0.711f - sv.y);
     }
 
     float smoke =
-        min(2.0,
-        max(-2.0,
-            1.5 + length(sv) * 0.12
-            - 0.17 * min(10.0, pc.time * 1.2)
-        ));
+       min(2.0f,
+       max(-2.0f,
+          1.5f + length(sv) * 0.12f
+          - 0.17f * min(10.0f, pc.time * 1.2f)
+       ));
 
-    if (smoke < 0.2)
+    if (smoke < 0.2f)
     {
-        smoke = (smoke - 0.2) * 0.6 + 0.2;
+       smoke = (smoke - 0.2f) * 0.6f + 0.2f;
     }
 
-    float c1p = max(0.0, 1.0 - 2.0 * abs(1.0 - smoke));
-    float c2p = max(0.0, 1.0 - 2.0 * smoke);
-    float cb  = 1.0 - min(1.0, c1p + c2p);
+    float c1p = max(0.0f, 1.0f - 2.0f * abs(1.0f - smoke));
+    float c2p = max(0.0f, 1.0f - 2.0f * smoke);
+    float cb = 1.0f - min(1.0f, c1p + c2p);
 
-    vec4 col =
-        Colour1 * c1p +
-        Colour2 * c2p +
-        vec4(cb * BLACK.rgb, cb * Colour1.a);
+    float4 col =
+       Colour1 * c1p +
+       Colour2 * c2p +
+       float4(cb * BLACK.rgb, cb * Colour1.a);
 
     float modFlash =
-        max(MidFlash * 0.8, max(c1p, c2p) * 5.0 - 4.4)
-        + MidFlash * max(c1p, c2p);
+       max(MidFlash * 0.8f, max(c1p, c2p) * 5.0f - 4.4f)
+       + MidFlash * max(c1p, c2p);
 
     return Easing(
-        col * (1.0 - modFlash) + modFlash * vec4(1.0),
-        1.5
+       col * (1.0f - modFlash) + modFlash * float4(1.0f),
+       1.5f
     );
 }
 
-void main()
+[shader("fragment")]
+float4 main(VSOutput input) : SV_Target
 {
-    vec2 uv = fragUV * 2.0 - 1.0;
-    uv.x *= 1.0;
-    vec4 col = Effect(uv, 2.0);
+    float2 uv = input.fragUV * 2.0f - 1.0f;
+    uv.x *= 1.0f;
+    float4 col = Effect(uv, 2.0f);
 
-    outColor = vec4(sqrt(clamp(col.rgb, 0.0, 1.0)), col.a);
+    return float4(sqrt(clamp(col.rgb, 0.0f, 1.0f)), col.a);
 }
 )";
 
-constexpr auto g_QuadVert = R"(
-#version 450
+constexpr auto g_DefaultVert = R"(
+struct VSOutput {
+	float2 fragUV : TEXCOORD0;
+	float4 Pos : SV_Position;
+};
 
-layout(location = 0) out vec2 fragUV;
-
-void main() {
-    vec2 pos = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
-    gl_Position = vec4(pos * 2.f - 1.f, 0.f, 1.f);
-    fragUV = pos;
+[shader("vertex")]
+VSOutput main(uint gl_VertexIndex : SV_VertexID)
+{
+	VSOutput output;
+	float2 pos = float2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+	output.Pos = float4(pos * 2.0f - 1.0f, 0.0f, 1.0f);
+	output.fragUV = pos;
+	return output;
 }
 )";
 
@@ -176,7 +182,7 @@ void ImGuiLayer::InitializeEditorResources()
                                                        VK_SHADER_STAGE_FRAGMENT_BIT,
                                                        nullptr};
 
-        m_TextureID->CreateLayout({.Bindings = std::array{Binding}});
+        m_TextureID->CreateLayout({.Bindings = luvk::Array{Binding}});
         m_TextureID->Allocate();
     }
 
@@ -200,20 +206,20 @@ void ImGuiLayer::InitializeEditorResources()
                                        .colorAttachmentCount = 1,
                                        .pColorAttachments = &Ref};
 
-    constexpr std::array Dependencies{VkSubpassDependency{.srcSubpass = VK_SUBPASS_EXTERNAL,
-                                                          .dstSubpass = 0,
-                                                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT},
-                                      VkSubpassDependency{.srcSubpass = 0,
-                                                          .dstSubpass = VK_SUBPASS_EXTERNAL,
-                                                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT}};
+    constexpr luvk::Array Dependencies{VkSubpassDependency{.srcSubpass = VK_SUBPASS_EXTERNAL,
+                                                           .dstSubpass = 0,
+                                                           .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                           .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                           .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                           .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                           .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT},
+                                       VkSubpassDependency{.srcSubpass = 0,
+                                                           .dstSubpass = VK_SUBPASS_EXTERNAL,
+                                                           .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                           .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                           .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                           .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                           .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT}};
 
     const VkRenderPassCreateInfo RPInfo{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
                                         .attachmentCount = 1,
@@ -236,6 +242,9 @@ void ImGuiLayer::InitializeEditorResources()
 
     vkCreateFramebuffer(m_Device->GetLogicalDevice(), &FBInfo, nullptr, &m_PreviewFramebuffer);
     TransitionTextureToReadState();
+
+    m_CachedVertexShader  = luvk::CompileShader(g_DefaultVert);
+    m_CachedDefaultShader = luvk::CompileShader(g_DefaultFrag);
 
     CompileShader();
 }
@@ -402,16 +411,12 @@ void ImGuiLayer::DrawEditor()
     if (ImGui::Button("Reset"))
     {
         m_ShaderCode = g_DefaultFrag;
-        CompileShader();
+        CreatePreviewPipeline(m_CachedDefaultShader);
     }
 
-    if (m_CompileSuccess)
+    if (!m_CompileSuccess)
     {
-        ImGui::TextColored(ImVec4(0, 1, 0, 1), "%s", m_StatusMessage.c_str());
-    }
-    else
-    {
-        ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", m_StatusMessage.c_str());
+        ImGui::TextColored(ImVec4(1, 0, 0, 1), "%s", std::data(m_StatusMessage));
     }
 
     if (const ImVec2 Avail = ImGui::GetContentRegionAvail();
@@ -538,26 +543,26 @@ void ImGuiLayer::PushStyle() const
 
 void ImGuiLayer::CompileShader()
 {
-    try
+    if (m_ShaderCode == g_DefaultFrag)
     {
-        const auto Spirv = luvk::CompileGLSLToSPIRV(m_ShaderCode, EShLangFragment);
-        CreatePreviewPipeline(Spirv);
         m_CompileSuccess = true;
-        m_StatusMessage  = "Compiled Successfully";
+        m_StatusMessage.clear();
+        CreatePreviewPipeline(m_CachedDefaultShader);
     }
-    catch (const std::exception& e)
+    else
     {
-        m_CompileSuccess = false;
-        m_StatusMessage  = e.what();
-        try
+        const auto [Result, Data, Error] = luvk::CompileShaderSafe(m_ShaderCode);
+        m_CompileSuccess                 = Result;
+        m_StatusMessage                  = Error;
+
+        if (m_CompileSuccess)
         {
-            CreatePreviewPipeline(luvk::CompileGLSLToSPIRV(g_DefaultFrag, EShLangFragment));
+            CreatePreviewPipeline(Data);
         }
-        catch (...) {}
     }
 }
 
-void ImGuiLayer::CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpirv)
+void ImGuiLayer::CreatePreviewPipeline(const luvk::Vector<std::uint32_t>& FragSpirv)
 {
     if (m_PreviewPipeline && m_Device)
     {
@@ -569,8 +574,8 @@ void ImGuiLayer::CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpi
         m_PreviewPipeline.reset();
     }
 
-    m_PreviewPipeline                 = std::make_shared<luvk::Pipeline>(m_Device);
-    constexpr std::array ColorFormats = {VK_FORMAT_R8G8B8A8_UNORM};
+    m_PreviewPipeline                  = std::make_shared<luvk::Pipeline>(m_Device);
+    constexpr luvk::Array ColorFormats = {VK_FORMAT_R8G8B8A8_UNORM};
 
     constexpr VkPushConstantRange PCRange{.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                                           .offset = 0,
@@ -580,9 +585,9 @@ void ImGuiLayer::CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpi
                                                .ColorFormats = ColorFormats,
                                                .RenderPass = m_PreviewRenderPass,
                                                .Subpass = 0,
-                                               .VertexShader = luvk::CompileGLSLToSPIRV(g_QuadVert, EShLangVertex),
+                                               .VertexShader = m_CachedVertexShader,
                                                .FragmentShader = FragSpirv,
-                                               .PushConstants = std::array{PCRange},
+                                               .PushConstants = luvk::Array{PCRange},
                                                .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                                .CullMode = VK_CULL_MODE_NONE,
                                                .EnableDepthOp = false});

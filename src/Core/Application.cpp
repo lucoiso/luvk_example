@@ -7,7 +7,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Modules/Renderer.hpp>
-#include <SDL2/SDL_vulkan.h>
+#include <SDL3/SDL_vulkan.h>
 
 using namespace luvk_example;
 
@@ -31,6 +31,7 @@ bool Application::Initialize()
         {
             return false;
         }
+
         m_ImGuiLayer.InitializeEditorResources();
 
         CreateScene();
@@ -54,6 +55,7 @@ bool Application::Initialize()
 
         return true;
     }
+
     return false;
 }
 
@@ -64,7 +66,10 @@ Application& Application::GetInstance()
     std::call_once(InitFlag,
                    [&]
                    {
-                       Instance.Initialize();
+                       if (!Instance.Initialize())
+                       {
+                           throw std::runtime_error("Failed to initialize");
+                       }
                    });
     return Instance;
 }
@@ -77,29 +82,23 @@ bool Application::Render()
         return false;
     }
 
-    if (m_ResizePending)
-    {
-        int NewW = 0, NewH = 0;
-        SDL_Vulkan_GetDrawableSize(m_Window, &NewW, &NewH);
-
-        if (NewW > 0 && NewH > 0)
-        {
-            m_Renderer->SetPaused(true);
-            m_Renderer->Refresh({static_cast<uint32_t>(NewW), static_cast<uint32_t>(NewH)});
-            m_Renderer->SetPaused(false);
-            m_ResizePending = false;
-            m_CanRender     = true;
-        }
-    }
-
     if (!m_CanRender)
     {
         return true;
     }
 
-    std::int32_t W = 0;
-    std::int32_t H = 0;
-    SDL_Vulkan_GetDrawableSize(m_Window, &W, &H);
+    std::int32_t Width  = 0;
+    std::int32_t Height = 0;
+    SDL_GetWindowSizeInPixels(m_Window, &Width, &Height);
+
+    if (m_ResizePending && Width > 0 && Height > 0)
+    {
+        m_Renderer->SetPaused(true);
+        m_Renderer->Refresh({static_cast<std::uint32_t>(Width), static_cast<std::uint32_t>(Height)});
+        m_Renderer->SetPaused(false);
+        m_ResizePending = false;
+        m_CanRender     = true;
+    }
 
     static auto LastTime    = std::chrono::high_resolution_clock::now();
     const auto  CurrentTime = std::chrono::high_resolution_clock::now();
@@ -107,7 +106,7 @@ bool Application::Render()
     LastTime                = CurrentTime;
 
     m_Camera.Update(DeltaTime, m_Input);
-    glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(W) / static_cast<float>(H), 0.1F, 10.F);
+    glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(Width) / static_cast<float>(Height), 0.1F, 10.F);
     Proj[1][1]     *= -1.F;
 
     m_CubeMesh->Update(DeltaTime, m_Camera.GetViewMatrix(), Proj);
@@ -131,57 +130,57 @@ void Application::CreateScene()
 
 void Application::RegisterInputBindings()
 {
-    m_Input.BindEvent(SDL_WINDOWEVENT,
-                      [&](const SDL_Event& Event)
+    m_Input.BindEvent(SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED,
+                      [&]([[maybe_unused]] const SDL_Event& Event)
                       {
-                          if (Event.window.event == SDL_WINDOWEVENT_RESIZED ||
-                              Event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
-                              Event.window.event == SDL_WINDOWEVENT_MAXIMIZED ||
-                              Event.window.event == SDL_WINDOWEVENT_RESTORED)
-                          {
-                              m_ResizePending = true;
-                          }
-                          else if (Event.window.event == SDL_WINDOWEVENT_MINIMIZED)
-                          {
-                              m_Renderer->SetPaused(true);
-                              m_CanRender = false;
-                          }
-                          else if (Event.window.event == SDL_WINDOWEVENT_RESTORED)
-                          {
-                              m_Renderer->SetPaused(false);
-                              m_CanRender = true;
-                          }
+                          m_ResizePending = true;
                       });
 
-    m_Input.BindEvent(SDL_MOUSEBUTTONDOWN,
+    m_Input.BindEvent(SDL_EVENT_WINDOW_MINIMIZED,
+                      [&]([[maybe_unused]] const SDL_Event& Event)
+                      {
+                          m_Renderer->SetPaused(true);
+                          m_CanRender = false;
+                      });
+
+    m_Input.BindEvent(SDL_EVENT_WINDOW_RESTORED,
+                      [&]([[maybe_unused]] const SDL_Event& Event)
+                      {
+                          m_Renderer->SetPaused(false);
+                          m_CanRender = true;
+                      });
+
+    m_Input.BindEvent(SDL_EVENT_MOUSE_BUTTON_DOWN,
                       [&](const SDL_Event& Event)
                       {
                           if (Event.button.button == SDL_BUTTON_RIGHT && !ImGui::GetIO().WantCaptureMouse)
                           {
                               std::int32_t NewW = 0;
                               std::int32_t NewH = 0;
-                              SDL_Vulkan_GetDrawableSize(m_Window, &NewW, &NewH);
-                              const glm::vec2 Position{2.F * static_cast<float>(Event.button.x) / static_cast<float>(NewW) - 1.F,
-                                                       2.F * static_cast<float>(Event.button.y) / static_cast<float>(NewH) - 1.F};
+                              SDL_GetWindowSizeInPixels(m_Window, &NewW, &NewH);
+
+                              const glm::vec2 Position{2.F * Event.button.x / static_cast<float>(NewW) - 1.F,
+                                                       2.F * Event.button.y / static_cast<float>(NewH) - 1.F};
                               m_TriangleMesh->AddInstance(Position);
                           }
                       });
 
-    m_Input.BindEvent(SDL_MOUSEMOTION,
+    m_Input.BindEvent(SDL_EVENT_MOUSE_MOTION,
                       [&](const SDL_Event& Event)
                       {
                           if (m_Input.LeftHeld() && !ImGui::GetIO().WantCaptureMouse)
                           {
-                              int NewW = 0;
-                              int NewH = 0;
-                              SDL_Vulkan_GetDrawableSize(m_Window, &NewW, &NewH);
-                              const glm::vec2 Position{2.F * static_cast<float>(Event.motion.x) / static_cast<float>(NewW) - 1.F,
-                                                       2.F * static_cast<float>(Event.motion.y) / static_cast<float>(NewH) - 1.F};
+                              std::int32_t NewW = 0;
+                              std::int32_t NewH = 0;
+                              SDL_GetWindowSizeInPixels(m_Window, &NewW, &NewH);
+
+                              const glm::vec2 Position{2.F * Event.motion.x / static_cast<float>(NewW) - 1.F,
+                                                       2.F * Event.motion.y / static_cast<float>(NewH) - 1.F};
                               m_PixelMesh->AddInstance(Position);
                           }
                       });
 
-    m_Input.BindEvent(SDL_USEREVENT,
+    m_Input.BindEvent(SDL_EVENT_USER,
                       [&](const SDL_Event& Event)
                       {
                           [[maybe_unused]] auto _ = m_ImGuiLayer.ProcessEvent(Event);

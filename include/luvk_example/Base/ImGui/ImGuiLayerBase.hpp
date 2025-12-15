@@ -5,9 +5,9 @@
 #pragma once
 
 #include <memory>
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #include <volk/volk.h>
-#include "luvk_example/Base/ImGui/ImGuiBackendSDL2.hpp"
+#include "luvk_example/Base/ImGui/ImGuiBackendSDL.hpp"
 #include "luvk_example/Base/ImGui/ImGuiMesh.hpp"
 
 namespace luvk
@@ -24,7 +24,7 @@ namespace luvk_example
     class ImGuiLayerBase
     {
     protected:
-        ImGuiBackendSDL2           m_SdlBackend{};
+        ImGuiBackendSDL            m_SdlBackend{};
         std::unique_ptr<ImGuiMesh> m_Mesh{};
         bool                       m_Initialized{false};
 

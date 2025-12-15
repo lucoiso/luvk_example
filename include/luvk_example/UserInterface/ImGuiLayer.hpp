@@ -5,7 +5,7 @@
 #pragma once
 
 #include <string>
-#include <vector>
+#include <luvk/Types/Vector.hpp>
 #include <volk/volk.h>
 #include "luvk_example/Base/ImGui/ImGuiLayerBase.hpp"
 
@@ -32,6 +32,8 @@ namespace luvk_example
         VkFramebuffer                        m_PreviewFramebuffer{VK_NULL_HANDLE};
         std::shared_ptr<luvk::Pipeline>      m_PreviewPipeline{};
         std::shared_ptr<luvk::DescriptorSet> m_TextureID{};
+        luvk::Vector<std::uint32_t>          m_CachedDefaultShader{};
+        luvk::Vector<std::uint32_t>          m_CachedVertexShader{};
 
     public:
         void InitializeEditorResources();
@@ -39,13 +41,13 @@ namespace luvk_example
         void UpdatePreview(const VkCommandBuffer& Cmd);
 
     private:
-        void DrawDockspace()const;
+        void DrawDockspace() const;
         void DrawEditor();
         void DrawTexture() const;
 
         void PushStyle() const;
         void CompileShader();
-        void CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpirv);
+        void CreatePreviewPipeline(const luvk::Vector<std::uint32_t>& FragSpirv);
 
         static int InputTextCallback(struct ImGuiInputTextCallbackData* Data);
         void       TransitionTextureToReadState() const;

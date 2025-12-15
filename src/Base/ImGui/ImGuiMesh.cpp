@@ -3,7 +3,6 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Base/ImGui/ImGuiMesh.hpp"
-#include <array>
 #include <cstring>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/DescriptorPool.hpp>
@@ -15,6 +14,7 @@
 #include <luvk/Resources/Image.hpp>
 #include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Resources/Sampler.hpp>
+#include <luvk/Types/Array.hpp>
 #include <luvk/Types/Material.hpp>
 #include <luvk/Types/Mesh.hpp>
 #include <luvk/Types/Texture.hpp>
@@ -22,42 +22,48 @@
 using namespace luvk_example;
 
 constexpr auto g_VertexShader = R"(
-    #version 450
+struct VSInput {
+	[[vk::location(0)]] float2 inPos;
+	[[vk::location(1)]] float2 inUV;
+	[[vk::location(2)]] float4 inColor;
+};
 
-    layout(location = 0) in vec2 inPos;
-    layout(location = 1) in vec2 inUV;
-    layout(location = 2) in vec4 inColor;
+struct PC {
+	float2 scale;
+	float2 translate;
+};
+[[vk::push_constant]] ConstantBuffer<PC> pc;
 
-    layout(push_constant) uniform PC
-    {
-        vec2 scale;
-        vec2 translate;
-    } pc;
+struct VSOutput {
+	float4 Position : SV_POSITION;
+	[[vk::location(0)]] float2 fragUV;
+	[[vk::location(1)]] float4 fragColor;
+};
 
-    layout(location = 0) out vec2 fragUV;
-    layout(location = 1) out vec4 fragColor;
-
-    void main()
-    {
-        fragUV = inUV;
-        fragColor = inColor;
-        gl_Position = vec4(inPos * pc.scale + pc.translate, 0.0, 1.0);
-    }
+[shader("vertex")]
+VSOutput main(VSInput input) {
+	VSOutput output;
+	output.fragUV = input.inUV;
+	output.fragColor = input.inColor;
+	output.Position = float4(input.inPos * pc.scale + pc.translate, 0.0, 1.0);
+	return output;
+}
 )";
 
 constexpr auto g_FragmentShader = R"(
-    #version 450
+struct VSOutput {
+	[[vk::location(0)]] float2 fragUV;
+	[[vk::location(1)]] float4 fragColor;
+};
 
-    layout(set = 0, binding = 0) uniform sampler2D Font;
+[[vk::binding(0, 0)]] Sampler2D Font;
 
-    layout(location = 0) in vec2 fragUV;
-    layout(location = 1) in vec4 fragColor;
-    layout(location = 0) out vec4 outColor;
-
-    void main()
-    {
-        outColor = fragColor * texture(Font, fragUV);
-    }
+[shader("fragment")]
+float4 main(VSOutput input) {
+	float4 sampledColor = Font.Sample(input.fragUV);
+	[[vk::location(0)]] float4 outColor = input.fragColor * sampledColor;
+    return outColor;
+}
 )";
 
 constexpr VkDescriptorSetLayoutBinding g_FontBinding{
@@ -68,11 +74,11 @@ constexpr VkDescriptorSetLayoutBinding g_FontBinding{
     nullptr
 };
 
-constexpr std::array g_Bindings{
+constexpr luvk::Array g_Bindings{
     VkVertexInputBindingDescription{0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX}
 };
 
-constexpr std::array g_Attributes{
+constexpr luvk::Array g_Attributes{
     VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, pos)},
     VkVertexInputAttributeDescription{1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, uv)},
     VkVertexInputAttributeDescription{2, 0, VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col)}
@@ -100,7 +106,7 @@ ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::Device>&         Device,
     if (!m_FontSet)
     {
         m_FontSet = std::make_shared<luvk::DescriptorSet>(m_Device, m_DescPool, m_Memory);
-        m_FontSet->CreateLayout({.Bindings = std::array{g_FontBinding}});
+        m_FontSet->CreateLayout({.Bindings = luvk::Array{g_FontBinding}});
         m_FontSet->Allocate();
     }
 
@@ -143,15 +149,15 @@ ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::Device>&         Device,
 
     m_Pipeline = std::make_shared<luvk::Pipeline>(m_Device);
     m_Pipeline->CreateGraphicsPipeline({.Extent = m_SwapChain->GetExtent(),
-                                        .ColorFormats = std::array{m_SwapChain->GetCreationArguments().Format},
+                                        .ColorFormats = luvk::Array{m_SwapChain->GetCreationArguments().Format},
                                         .RenderPass = m_SwapChain->GetRenderPass(),
                                         .Subpass = 0,
-                                        .VertexShader = luvk::CompileGLSLToSPIRV(g_VertexShader, EShLangVertex),
-                                        .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
-                                        .SetLayouts = std::array{m_FontSet->GetLayout()},
+                                        .VertexShader = luvk::CompileShader(g_VertexShader),
+                                        .FragmentShader = luvk::CompileShader(g_FragmentShader),
+                                        .SetLayouts = luvk::Array{m_FontSet->GetLayout()},
                                         .Bindings = g_Bindings,
                                         .Attributes = g_Attributes,
-                                        .PushConstants = std::array{PCRange},
+                                        .PushConstants = luvk::Array{PCRange},
                                         .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                         .CullMode = VK_CULL_MODE_NONE,
                                         .EnableDepthOp = false});
@@ -249,10 +255,10 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFr
                              ? VK_INDEX_TYPE_UINT16
                              : VK_INDEX_TYPE_UINT32);
 
-    const std::array Push{2.F / RenderData->DisplaySize.x,
-                          2.F / RenderData->DisplaySize.y,
-                          -1.F - RenderData->DisplayPos.x * (2.F / RenderData->DisplaySize.x),
-                          -1.F - RenderData->DisplayPos.y * (2.F / RenderData->DisplaySize.y)};
+    const luvk::Array Push{2.F / RenderData->DisplaySize.x,
+                           2.F / RenderData->DisplaySize.y,
+                           -1.F - RenderData->DisplayPos.x * (2.F / RenderData->DisplaySize.x),
+                           -1.F - RenderData->DisplayPos.y * (2.F / RenderData->DisplaySize.y)};
 
     vkCmdPushConstants(Cmd,
                        m_Pipeline->GetPipelineLayout(),

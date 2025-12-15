@@ -6,7 +6,7 @@
 
 #include <imgui.h>
 #include <memory>
-#include <vector>
+#include <luvk/Types/Vector.hpp>
 #include <volk/volk.h>
 
 namespace luvk
@@ -39,12 +39,12 @@ namespace luvk_example
         std::shared_ptr<luvk::SwapChain> m_SwapChain{};
         std::shared_ptr<luvk::Memory>    m_Memory{};
 
-        std::vector<std::shared_ptr<luvk::Buffer>> m_VtxBuffers{};
-        std::vector<std::shared_ptr<luvk::Buffer>> m_IdxBuffers{};
-        std::vector<std::size_t>                   m_VtxBufferSizes{};
-        std::vector<std::size_t>                   m_IdxBufferSizes{};
-        std::vector<ImDrawVert>                    m_Vertices{};
-        std::vector<ImDrawIdx>                     m_Indices{};
+        luvk::Vector<std::shared_ptr<luvk::Buffer>> m_VtxBuffers{};
+        luvk::Vector<std::shared_ptr<luvk::Buffer>> m_IdxBuffers{};
+        luvk::Vector<std::size_t>                   m_VtxBufferSizes{};
+        luvk::Vector<std::size_t>                   m_IdxBufferSizes{};
+        luvk::Vector<ImDrawVert>                    m_Vertices{};
+        luvk::Vector<ImDrawIdx>                     m_Indices{};
 
     public:
         ImGuiMesh() = delete;

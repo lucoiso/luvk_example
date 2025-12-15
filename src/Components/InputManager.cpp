@@ -21,22 +21,22 @@ void InputManager::ProcessEvents()
     {
         switch (Event.type)
         {
-        case SDL_QUIT:
+        case SDL_EVENT_QUIT:
             {
                 m_Running = false;
                 break;
             }
-        case SDL_KEYDOWN:
+        case SDL_EVENT_KEY_DOWN:
             {
-                m_PressedKeys.insert(Event.key.keysym.sym);
+                m_PressedKeys.insert(Event.key.key);
                 break;
             }
-        case SDL_KEYUP:
+        case SDL_EVENT_KEY_UP:
             {
-                m_PressedKeys.erase(Event.key.keysym.sym);
+                m_PressedKeys.erase(Event.key.key);
                 break;
             }
-        case SDL_MOUSEBUTTONDOWN:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
             {
                 if (Event.button.button == SDL_BUTTON_LEFT)
                 {
@@ -44,7 +44,7 @@ void InputManager::ProcessEvents()
                 }
                 break;
             }
-        case SDL_MOUSEBUTTONUP:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
             {
                 if (Event.button.button == SDL_BUTTON_LEFT)
                 {
@@ -56,7 +56,7 @@ void InputManager::ProcessEvents()
         }
 
         InvokeCallbacks(Event.type, Event);
-        InvokeCallbacks(SDL_USEREVENT, Event);
+        InvokeCallbacks(SDL_EVENT_USER, Event);
     }
 }
 

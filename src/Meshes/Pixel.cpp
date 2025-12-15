@@ -3,61 +3,68 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Meshes/Pixel.hpp"
-#include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Resources/Pipeline.hpp>
+#include <luvk/Types/Array.hpp>
 #include <luvk/Types/Material.hpp>
 
 using namespace luvk_example;
 
 constexpr auto g_VertexShader = R"(
-    #version 450
+struct VSInput {
+	float2 inPos : POSITION;
+	float2 offset : TEXCOORD0;
+	float angle : TEXCOORD1;
+	float4 instColor : COLOR0;
+};
 
-    layout(location = 0) in vec2 inPos;
-    layout(location = 1) in vec2 offset;
-    layout(location = 2) in float angle;
-    layout(location = 3) in vec4 instColor;
-    layout(location = 0) out vec4 vColor;
+struct VSOutput {
+	float4 vColor : COLOR;
+	float4 Pos : SV_Position;
+};
 
-    void main()
-    {
-       mat2 R = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-       vec2 pos = R * inPos + offset;
-       gl_Position = vec4(pos, 0.0, 1.0);
-       vColor = instColor;
-    }
+[shader("vertex")]
+VSOutput main(VSInput input)
+{
+	VSOutput output;
+	float2x2 R = float2x2(cos(input.angle), -sin(input.angle), sin(input.angle), cos(input.angle));
+	float2 pos = mul(R, input.inPos) + input.offset;
+	output.Pos = float4(pos, 0.0f, 1.0f);
+	output.vColor = input.instColor;
+	return output;
+}
 )";
 
 constexpr auto g_FragmentShader = R"(
-    #version 450
+struct VSOutput {
+	float4 vColor : COLOR;
+};
 
-    layout(location = 0) in vec4 vColor;
-    layout(location = 0) out vec4 outColor;
-
-    void main()
-    {
-        outColor = vColor;
-    }
+[shader("fragment")]
+float4 main(VSOutput input) : SV_Target
+{
+	return input.vColor;
+}
 )";
 
-constexpr std::array<glm::vec2, 13> g_PixVertices{{
-    {0.f, 0.f},
-    {0.01f, 0.f},
-    {0.00866f, 0.005f},
-    {0.005f, 0.00866f},
-    {0.f, 0.01f},
-    {-0.005f, 0.00866f},
-    {-0.00866f, 0.005f},
-    {-0.01f, 0.f},
-    {-0.00866f, -0.005f},
-    {-0.005f, -0.00866f},
-    {0.f, -0.01f},
-    {0.005f, -0.00866f},
-    {0.00866f, -0.005f}
+constexpr luvk::Array<glm::vec2, 13> g_PixVertices{{
+    glm::vec2{0.f, 0.f},
+    glm::vec2{0.01f, 0.f},
+    glm::vec2{0.00866f, 0.005f},
+    glm::vec2{0.005f, 0.00866f},
+    glm::vec2{0.f, 0.01f},
+    glm::vec2{-0.005f, 0.00866f},
+    glm::vec2{-0.00866f, 0.005f},
+    glm::vec2{-0.01f, 0.f},
+    glm::vec2{-0.00866f, -0.005f},
+    glm::vec2{-0.005f, -0.00866f},
+    glm::vec2{0.f, -0.01f},
+    glm::vec2{0.005f, -0.00866f},
+    glm::vec2{0.00866f, -0.005f}
 }};
 
-constexpr std::array<std::uint16_t, 36> g_PixIndices{{
+constexpr luvk::Array<std::uint16_t, 36> g_PixIndices{{
     0,
     1,
     2,
@@ -96,13 +103,13 @@ constexpr std::array<std::uint16_t, 36> g_PixIndices{{
     1
 }};
 
-constexpr std::array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
-                                VkVertexInputBindingDescription{1, sizeof(luvk::Mesh::InstanceInfo), VK_VERTEX_INPUT_RATE_INSTANCE}};
+constexpr luvk::Array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
+                                 VkVertexInputBindingDescription{1, sizeof(luvk::Mesh::InstanceInfo), VK_VERTEX_INPUT_RATE_INSTANCE}};
 
-constexpr std::array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
-                                  VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Position)},
-                                  VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Rotation) + sizeof(float) * 2},
-                                  VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, Color)}};
+constexpr luvk::Array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+                                   VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Position)},
+                                   VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Rotation) + sizeof(float) * 2},
+                                   VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, Color)}};
 
 Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
              const std::shared_ptr<luvk::SwapChain>& Swap,
@@ -112,10 +119,10 @@ Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
     const auto Pipeline = std::make_shared<luvk::Pipeline>(Device);
 
     Pipeline->CreateGraphicsPipeline({.Extent = Swap->GetExtent(),
-                                      .ColorFormats = std::array{Swap->GetCreationArguments().Format},
+                                      .ColorFormats = luvk::Array{Swap->GetCreationArguments().Format},
                                       .RenderPass = Swap->GetRenderPass(),
-                                      .VertexShader = luvk::CompileGLSLToSPIRV(g_VertexShader, EShLangVertex),
-                                      .FragmentShader = luvk::CompileGLSLToSPIRV(g_FragmentShader, EShLangFragment),
+                                      .VertexShader = luvk::CompileShader(g_VertexShader),
+                                      .FragmentShader = luvk::CompileShader(g_FragmentShader),
                                       .Bindings = g_Bindings,
                                       .Attributes = g_Attributes,
                                       .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -132,10 +139,10 @@ Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
 void Pixel::AddInstance(const glm::vec2& Position)
 {
     luvk::Mesh::InstanceInfo Inst{};
-    Inst.XForm.Position[0] = Position.x;
-    Inst.XForm.Position[1] = Position.y;
-    Inst.XForm.Rotation[2] = 0.F;
-    Inst.Color             = {1.F, 1.F, 1.F, 1.F};
+    Inst.XForm.Position.at(0) = Position.x;
+    Inst.XForm.Position.at(1) = Position.y;
+    Inst.XForm.Rotation.at(2) = 0.F;
+    Inst.Color                = {1.F, 1.F, 1.F, 1.F};
 
     m_LocalInstances.push_back(Inst);
     UpdateInstances(std::as_bytes(std::span{m_LocalInstances}), static_cast<std::uint32_t>(std::size(m_LocalInstances)));

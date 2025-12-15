@@ -2,60 +2,62 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Base/ImGui/ImGuiBackendSDL2.hpp"
+#include "luvk_example/Base/ImGui/ImGuiBackendSDL.hpp"
 #include <imgui.h>
-#include <SDL2/SDL_vulkan.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 
 using namespace luvk_example;
 
 static ImGuiKey SDLKeyToImGuiKey(SDL_Keycode Keycode, SDL_Scancode Scancode);
 static void     UpdateModifiers(SDL_Keymod Mods);
 
-bool ImGuiBackendSDL2::Init(SDL_Window* Window)
+bool ImGuiBackendSDL::Init(SDL_Window* Window)
 {
     m_Window = Window;
 
     ImGuiIO& GuiIO            = ImGui::GetIO();
-    GuiIO.BackendPlatformName = "ImGuiBackendSDL2";
+    GuiIO.BackendPlatformName = "ImGuiBackendSDL";
     GuiIO.BackendFlags        |= ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
 
-    m_MouseCursors[ImGuiMouseCursor_Arrow]      = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-    m_MouseCursors[ImGuiMouseCursor_TextInput]  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
-    m_MouseCursors[ImGuiMouseCursor_ResizeAll]  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
-    m_MouseCursors[ImGuiMouseCursor_ResizeNS]   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-    m_MouseCursors[ImGuiMouseCursor_ResizeEW]   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-    m_MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENESW);
-    m_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENWSE);
-    m_MouseCursors[ImGuiMouseCursor_Hand]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
-    m_MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NO);
+    m_MouseCursors.at(ImGuiMouseCursor_Arrow)      = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+    m_MouseCursors.at(ImGuiMouseCursor_TextInput)  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+    m_MouseCursors.at(ImGuiMouseCursor_ResizeAll)  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    m_MouseCursors.at(ImGuiMouseCursor_ResizeNS)   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
+    m_MouseCursors.at(ImGuiMouseCursor_ResizeEW)   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
+    m_MouseCursors.at(ImGuiMouseCursor_ResizeNESW) = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE);
+    m_MouseCursors.at(ImGuiMouseCursor_ResizeNWSE) = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
+    m_MouseCursors.at(ImGuiMouseCursor_Hand)       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+    m_MouseCursors.at(ImGuiMouseCursor_NotAllowed) = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED);
 
     return true;
 }
 
-void ImGuiBackendSDL2::Shutdown()
+void ImGuiBackendSDL::Shutdown()
 {
     for (SDL_Cursor*& Cursor : m_MouseCursors)
     {
         if (Cursor)
         {
-            SDL_FreeCursor(Cursor);
+            SDL_DestroyCursor(Cursor);
             Cursor = nullptr;
         }
     }
     m_Window = nullptr;
 }
 
-void ImGuiBackendSDL2::NewFrame() const
+void ImGuiBackendSDL::NewFrame() const
 {
     ImGuiIO& GuiIO = ImGui::GetIO();
 
-    std::int32_t Width  = 0;
-    std::int32_t Height = 0;
+    std::int32_t Width  = 0.0f;
+    std::int32_t Height = 0.0f;
     SDL_GetWindowSize(m_Window, &Width, &Height);
 
     std::int32_t DrawWidth  = 0;
     std::int32_t DrawHeight = 0;
-    SDL_Vulkan_GetDrawableSize(m_Window, &DrawWidth, &DrawHeight);
+    SDL_GetWindowSizeInPixels(m_Window, &DrawWidth, &DrawHeight);
+
     GuiIO.DisplaySize = ImVec2(static_cast<float>(Width), static_cast<float>(Height));
 
     if (Width > 0 && Height > 0)
@@ -69,64 +71,64 @@ void ImGuiBackendSDL2::NewFrame() const
         if (const ImGuiMouseCursor ImgCursor = ImGui::GetMouseCursor();
             GuiIO.MouseDrawCursor || ImgCursor == ImGuiMouseCursor_None)
         {
-            SDL_ShowCursor(SDL_FALSE);
+            SDL_HideCursor();
         }
         else
         {
-            SDL_Cursor* const Cursor = m_MouseCursors[ImgCursor]
-                                           ? m_MouseCursors[ImgCursor]
-                                           : m_MouseCursors[ImGuiMouseCursor_Arrow];
+            SDL_Cursor* const Cursor = m_MouseCursors.at(ImgCursor)
+                                           ? m_MouseCursors.at(ImgCursor)
+                                           : m_MouseCursors.at(ImGuiMouseCursor_Arrow);
             SDL_SetCursor(Cursor);
-            SDL_ShowCursor(SDL_TRUE);
+            SDL_ShowCursor();
         }
     }
 }
 
-bool ImGuiBackendSDL2::ProcessEvent(const SDL_Event& Event) const
+bool ImGuiBackendSDL::ProcessEvent(const SDL_Event& Event) const
 {
     ImGuiIO& GuiIO = ImGui::GetIO();
 
     switch (Event.type)
     {
-    case SDL_MOUSEWHEEL:
+    case SDL_EVENT_MOUSE_WHEEL:
         {
-            GuiIO.AddMouseWheelEvent(static_cast<float>(Event.wheel.x), static_cast<float>(Event.wheel.y));
+            GuiIO.AddMouseWheelEvent(Event.wheel.x, Event.wheel.y);
             return true;
         }
-    case SDL_MOUSEBUTTONDOWN:
-    case SDL_MOUSEBUTTONUP:
+    case SDL_EVENT_MOUSE_BUTTON_DOWN:
+    case SDL_EVENT_MOUSE_BUTTON_UP:
         {
             if (Event.button.button == SDL_BUTTON_LEFT)
             {
-                GuiIO.AddMouseButtonEvent(0, Event.type == SDL_MOUSEBUTTONDOWN);
+                GuiIO.AddMouseButtonEvent(0, Event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
             }
             else if (Event.button.button == SDL_BUTTON_RIGHT)
             {
-                GuiIO.AddMouseButtonEvent(1, Event.type == SDL_MOUSEBUTTONDOWN);
+                GuiIO.AddMouseButtonEvent(1, Event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
             }
             else if (Event.button.button == SDL_BUTTON_MIDDLE)
             {
-                GuiIO.AddMouseButtonEvent(2, Event.type == SDL_MOUSEBUTTONDOWN);
+                GuiIO.AddMouseButtonEvent(2, Event.type == SDL_EVENT_MOUSE_BUTTON_DOWN);
             }
 
             return true;
         }
-    case SDL_MOUSEMOTION:
+    case SDL_EVENT_MOUSE_MOTION:
         {
-            GuiIO.AddMousePosEvent(static_cast<float>(Event.motion.x), static_cast<float>(Event.motion.y));
+            GuiIO.AddMousePosEvent(Event.motion.x, Event.motion.y);
             return true;
         }
-    case SDL_TEXTINPUT:
+    case SDL_EVENT_TEXT_INPUT:
         {
             GuiIO.AddInputCharactersUTF8(Event.text.text);
             return true;
         }
-    case SDL_KEYDOWN:
-    case SDL_KEYUP:
+    case SDL_EVENT_KEY_DOWN:
+    case SDL_EVENT_KEY_UP:
         {
-            const ImGuiKey Key = SDLKeyToImGuiKey(Event.key.keysym.sym, Event.key.keysym.scancode);
-            GuiIO.AddKeyEvent(Key, Event.type == SDL_KEYDOWN);
-            UpdateModifiers(static_cast<SDL_Keymod>(Event.key.keysym.mod));
+            const ImGuiKey Key = SDLKeyToImGuiKey(Event.key.key, Event.key.scancode);
+            GuiIO.AddKeyEvent(Key, Event.type == SDL_EVENT_KEY_DOWN);
+            UpdateModifiers(Event.key.mod);
             return true;
         }
     default: break;
@@ -210,8 +212,8 @@ static ImGuiKey SDLKeyToImGuiKey(const SDL_Keycode Keycode, const SDL_Scancode S
 static void UpdateModifiers(const SDL_Keymod Mods)
 {
     ImGuiIO& GuiIO = ImGui::GetIO();
-    GuiIO.AddKeyEvent(ImGuiMod_Ctrl, (Mods & KMOD_CTRL) != 0);
-    GuiIO.AddKeyEvent(ImGuiMod_Shift, (Mods & KMOD_SHIFT) != 0);
-    GuiIO.AddKeyEvent(ImGuiMod_Alt, (Mods & KMOD_ALT) != 0);
-    GuiIO.AddKeyEvent(ImGuiMod_Super, (Mods & KMOD_GUI) != 0);
+    GuiIO.AddKeyEvent(ImGuiMod_Ctrl, (Mods & SDL_KMOD_CTRL) != 0);
+    GuiIO.AddKeyEvent(ImGuiMod_Shift, (Mods & SDL_KMOD_SHIFT) != 0);
+    GuiIO.AddKeyEvent(ImGuiMod_Alt, (Mods & SDL_KMOD_ALT) != 0);
+    GuiIO.AddKeyEvent(ImGuiMod_Super, (Mods & SDL_KMOD_GUI) != 0);
 }

@@ -5,9 +5,9 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <glm/glm.hpp>
 #include <luvk/Types/Mesh.hpp>
+#include <luvk/Types/Vector.hpp>
 
 namespace luvk
 {
@@ -36,7 +36,7 @@ namespace luvk_example
         std::shared_ptr<luvk::Buffer>   m_ComputeUBO{};
         std::shared_ptr<luvk::Material> m_GraphicsMat{};
         std::shared_ptr<luvk::Material> m_ComputeMat{};
-        std::vector<Particle>           m_Particles{};
+        luvk::Vector<Particle>          m_Particles{};
 
     public:
         Triangle(const std::shared_ptr<luvk::Device>&         Device,

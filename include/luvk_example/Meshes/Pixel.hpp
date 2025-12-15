@@ -5,9 +5,9 @@
 #pragma once
 
 #include <memory>
-#include <vector>
 #include <glm/glm.hpp>
 #include <luvk/Types/Mesh.hpp>
+#include <luvk/Types/Vector.hpp>
 
 namespace luvk
 {
@@ -18,7 +18,7 @@ namespace luvk_example
 {
     class Pixel : public luvk::Mesh
     {
-        std::vector<luvk::Mesh::InstanceInfo> m_LocalInstances{};
+        luvk::Vector<luvk::Mesh::InstanceInfo> m_LocalInstances{};
 
     public:
         Pixel(const std::shared_ptr<luvk::Device>&    Device,
