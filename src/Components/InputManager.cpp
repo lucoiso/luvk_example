@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Core/InputManager.hpp"
+#include "luvk_example/Components/InputManager.hpp"
 
 using namespace luvk_example;
 

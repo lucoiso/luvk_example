@@ -44,10 +44,9 @@ namespace luvk_example
                  const std::shared_ptr<luvk::Memory>&         Memory,
                  const std::shared_ptr<luvk::DescriptorPool>& Pool);
 
-        void Update(float DeltaTime) const;
         void AddInstance(glm::vec2 const& Position);
 
         void Compute(const VkCommandBuffer& Cmd) const;
-        void Draw(const VkCommandBuffer& Cmd, std::span<const std::byte> PushConstants = {}) const override;
+        void Draw(const VkCommandBuffer& Cmd, std::span<const std::byte> PushConstants) const override;
     };
 } // namespace luvk_example

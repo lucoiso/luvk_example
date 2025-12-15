@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "luvk_example/Core/ApplicationBase.hpp"
-#include "luvk_example/Core/Camera.hpp"
+#include "luvk_example/Base/ApplicationBase.hpp"
+#include "luvk_example/Components/Camera.hpp"
 #include "luvk_example/Meshes/Cube.hpp"
 #include "luvk_example/Meshes/Pixel.hpp"
 #include "luvk_example/Meshes/Triangle.hpp"

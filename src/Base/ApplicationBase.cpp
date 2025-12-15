@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Core/ApplicationBase.hpp"
+#include "luvk_example/Base/ApplicationBase.hpp"
 #include <execution>
 #include <vector>
 #include <luvk/Libraries/ShaderCompiler.hpp>

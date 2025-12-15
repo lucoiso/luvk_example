@@ -7,8 +7,8 @@
 #include <memory>
 #include <SDL2/SDL.h>
 #include <volk/volk.h>
-#include "ImGuiBackendSDL2.hpp"
-#include "ImGuiMesh.hpp"
+#include "luvk_example/Base/ImGui/ImGuiBackendSDL2.hpp"
+#include "luvk_example/Base/ImGui/ImGuiMesh.hpp"
 
 namespace luvk
 {

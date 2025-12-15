@@ -18,7 +18,7 @@ namespace luvk_example
     public:
         constexpr ImGuiBackendSDL2() = default;
 
-        bool               Init(SDL_Window* Window);
+        [[nodiscard]] bool Init(SDL_Window* Window);
         void               Shutdown();
         void               NewFrame() const;
         [[nodiscard]] bool ProcessEvent(const SDL_Event& Event) const;

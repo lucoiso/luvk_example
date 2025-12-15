@@ -21,39 +21,109 @@ constexpr auto g_DefaultFrag = R"(
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec2 fragUV;
 
-layout(push_constant) uniform PC {
+layout(push_constant) uniform PC
+{
     float time;
 } pc;
 
-void main() {
+#define PIXEL_SIZE_FAC 700.0
+#define BLACK (0.6 * vec4(79.0/255.0, 99.0/255.0, 103.0/255.0, 1.0/0.6))
+
+const float VortSpeed  = 1.0;
+const float MidFlash   = 0.0;
+const float VortOffset = 0.0;
+
+const vec4 Colour1 = vec4(0.9960784, 0.3725490, 0.3333333, 1.0);
+const vec4 Colour2 = vec4(0.0, 0.6156863, 1.0, 1.0);
+
+vec4 Easing(vec4 t, float power)
+{
+    return vec4(
+        pow(t.x, power),
+        pow(t.y, power),
+        pow(t.z, power),
+        pow(t.w, power)
+    );
+}
+
+vec4 Effect(vec2 uv, float scale)
+{
+    uv = floor(uv * (PIXEL_SIZE_FAC * 0.5)) / (PIXEL_SIZE_FAC * 0.5);
+    uv /= scale;
+
+    float uvLen = length(uv);
+
+    float speed = pc.time * VortSpeed;
+
+    float angle =
+        atan(uv.y, uv.x)
+        + (2.2 + 0.4 * min(6.0, speed)) * uvLen
+        - 1.0
+        - speed * 0.05
+        - min(6.0, speed) * speed * 0.02
+        + VortOffset;
+
+    vec2 sv = vec2(
+        uvLen * cos(angle),
+        uvLen * sin(angle)
+    );
+
+    sv *= 30.0;
+    speed = pc.time * 6.0 * VortSpeed + VortOffset + 5.0;
+
+    vec2 uv2 = vec2(sv.x + sv.y);
+
+    for (int i = 0; i < 5; ++i)
+    {
+        uv2 += sin(max(sv.x, sv.y)) + sv;
+
+        sv += 0.5 * vec2(
+            cos(5.1123314 + 0.353 * uv2.y + speed * 0.131121),
+            sin(uv2.x - 0.113 * speed)
+        );
+
+        sv -= 1.0 * cos(sv.x + sv.y)
+            - 1.0 * sin(sv.x * 0.711 - sv.y);
+    }
+
+    float smoke =
+        min(2.0,
+        max(-2.0,
+            1.5 + length(sv) * 0.12
+            - 0.17 * min(10.0, pc.time * 1.2)
+        ));
+
+    if (smoke < 0.2)
+    {
+        smoke = (smoke - 0.2) * 0.6 + 0.2;
+    }
+
+    float c1p = max(0.0, 1.0 - 2.0 * abs(1.0 - smoke));
+    float c2p = max(0.0, 1.0 - 2.0 * smoke);
+    float cb  = 1.0 - min(1.0, c1p + c2p);
+
+    vec4 col =
+        Colour1 * c1p +
+        Colour2 * c2p +
+        vec4(cb * BLACK.rgb, cb * Colour1.a);
+
+    float modFlash =
+        max(MidFlash * 0.8, max(c1p, c2p) * 5.0 - 4.4)
+        + MidFlash * max(c1p, c2p);
+
+    return Easing(
+        col * (1.0 - modFlash) + modFlash * vec4(1.0),
+        1.5
+    );
+}
+
+void main()
+{
     vec2 uv = fragUV * 2.0 - 1.0;
+    uv.x *= 1.0;
+    vec4 col = Effect(uv, 2.0);
 
-    float wave1 = sin(uv.x * 10.0 + pc.time * 2.0);
-    float wave2 = cos(uv.y * 8.0 - pc.time * 1.5);
-    float wave3 = sin(length(uv) * 12.0 - pc.time * 3.0);
-
-    float angle = pc.time * 0.5;
-    mat2 rot = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
-    vec2 rotUV = rot * uv;
-
-    float spiral = atan(rotUV.y, rotUV.x) + length(rotUV) * 5.0 - pc.time * 2.0;
-
-    float pattern = (wave1 + wave2 + wave3 + sin(spiral)) * 0.25;
-
-    vec3 col1 = vec3(0.5 + 0.5 * sin(pc.time + 0.0),
-                     0.5 + 0.5 * sin(pc.time + 2.0),
-                     0.5 + 0.5 * sin(pc.time + 4.0));
-
-    vec3 col2 = vec3(0.5 + 0.5 * cos(pc.time + 1.0),
-                     0.5 + 0.5 * cos(pc.time + 3.0),
-                     0.5 + 0.5 * cos(pc.time + 5.0));
-
-    vec3 finalCol = mix(col1, col2, pattern * 0.5 + 0.5);
-
-    float pulse = 0.8 + 0.2 * sin(pc.time * 4.0);
-    finalCol *= pulse;
-
-    outColor = vec4(finalCol, 1.0);
+    outColor = vec4(sqrt(clamp(col.rgb, 0.0, 1.0)), col.a);
 }
 )";
 
@@ -82,6 +152,8 @@ int ImGuiLayer::InputTextCallback(ImGuiInputTextCallbackData* Data)
 
 void ImGuiLayer::InitializeEditorResources()
 {
+    PushStyle();
+
     m_ShaderCode = g_DefaultFrag;
     m_ShaderCode.reserve(1024 * 4);
 
@@ -163,7 +235,7 @@ void ImGuiLayer::InitializeEditorResources()
                                          .layers = 1};
 
     vkCreateFramebuffer(m_Device->GetLogicalDevice(), &FBInfo, nullptr, &m_PreviewFramebuffer);
-    TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    TransitionTextureToReadState();
 
     CompileShader();
 }
@@ -243,7 +315,7 @@ void ImGuiLayer::Draw()
                               std::data(m_ShaderCode),
                               m_ShaderCode.capacity() + 1,
                               ImVec2(-FLT_MIN, -260.0f),
-                              ImGuiInputTextFlags_CallbackResize,
+                              ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AllowTabInput,
                               InputTextCallback,
                               &m_ShaderCode);
 
@@ -353,6 +425,100 @@ void ImGuiLayer::UpdatePreview(const VkCommandBuffer& Cmd)
                          &BarrierToShaderRead);
 }
 
+void ImGuiLayer::PushStyle() const
+{
+    /* Using: Moonlight style by Madam-Herta from ImThemes */
+    ImGuiStyle& ImGuiStyle = ImGui::GetStyle();
+
+    ImGuiStyle.Alpha                            = 1.0F;
+    ImGuiStyle.DisabledAlpha                    = 1.0F;
+    ImGuiStyle.WindowPadding                    = ImVec2(12.0F, 12.0F);
+    ImGuiStyle.WindowRounding                   = 11.5F;
+    ImGuiStyle.WindowBorderSize                 = 0.0F;
+    ImGuiStyle.WindowMinSize                    = ImVec2(20.0F, 20.0F);
+    ImGuiStyle.WindowTitleAlign                 = ImVec2(0.5f, 0.5F);
+    ImGuiStyle.WindowMenuButtonPosition         = ImGuiDir_Right;
+    ImGuiStyle.ChildRounding                    = 0.0F;
+    ImGuiStyle.ChildBorderSize                  = 1.0F;
+    ImGuiStyle.PopupRounding                    = 0.0F;
+    ImGuiStyle.PopupBorderSize                  = 1.0F;
+    ImGuiStyle.FramePadding                     = ImVec2(20.0F, 3.400000095367432F);
+    ImGuiStyle.FrameRounding                    = 11.89999961853027F;
+    ImGuiStyle.FrameBorderSize                  = 0.0F;
+    ImGuiStyle.ItemSpacing                      = ImVec2(4.300000190734863f, 5.5F);
+    ImGuiStyle.ItemInnerSpacing                 = ImVec2(7.099999904632568f, 1.799999952316284F);
+    ImGuiStyle.CellPadding                      = ImVec2(12.10000038146973f, 9.199999809265137F);
+    ImGuiStyle.IndentSpacing                    = 0.0F;
+    ImGuiStyle.ColumnsMinSpacing                = 4.900000095367432F;
+    ImGuiStyle.ScrollbarSize                    = 11.60000038146973F;
+    ImGuiStyle.ScrollbarRounding                = 15.89999961853027F;
+    ImGuiStyle.GrabMinSize                      = 3.700000047683716F;
+    ImGuiStyle.GrabRounding                     = 20.0F;
+    ImGuiStyle.TabRounding                      = 0.0F;
+    ImGuiStyle.TabBorderSize                    = 0.0F;
+    ImGuiStyle.TabCloseButtonMinWidthSelected   = 0.0F;
+    ImGuiStyle.TabCloseButtonMinWidthUnselected = 0.0F;
+    ImGuiStyle.ColorButtonPosition              = ImGuiDir_Right;
+    ImGuiStyle.ButtonTextAlign                  = ImVec2(0.5f, 0.5F);
+    ImGuiStyle.SelectableTextAlign              = ImVec2(0.0F, 0.0F);
+
+    ImVec4* const ImGuiColors = ImGuiStyle.Colors;
+
+    ImGuiColors[ImGuiCol_Text]                  = ImVec4(1.0F, 1.0F, 1.0F, 1.0F);
+    ImGuiColors[ImGuiCol_TextDisabled]          = ImVec4(0.2745098173618317f, 0.3176470696926117f, 0.4509803950786591f, 1.0F);
+    ImGuiColors[ImGuiCol_WindowBg]              = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0F);
+    ImGuiColors[ImGuiCol_ChildBg]               = ImVec4(0.09411764889955521f, 0.1019607856869698f, 0.1176470592617989f, 1.0F);
+    ImGuiColors[ImGuiCol_PopupBg]               = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0F);
+    ImGuiColors[ImGuiCol_Border]                = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0F);
+    ImGuiColors[ImGuiCol_BorderShadow]          = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0F);
+    ImGuiColors[ImGuiCol_FrameBg]               = ImVec4(0.1137254908680916f, 0.125490203499794f, 0.1529411822557449f, 1.0F);
+    ImGuiColors[ImGuiCol_FrameBgHovered]        = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0F);
+    ImGuiColors[ImGuiCol_FrameBgActive]         = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0F);
+    ImGuiColors[ImGuiCol_TitleBg]               = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0F);
+    ImGuiColors[ImGuiCol_TitleBgActive]         = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0F);
+    ImGuiColors[ImGuiCol_TitleBgCollapsed]      = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0F);
+    ImGuiColors[ImGuiCol_MenuBarBg]             = ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0F);
+    ImGuiColors[ImGuiCol_ScrollbarBg]           = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0F);
+    ImGuiColors[ImGuiCol_ScrollbarGrab]         = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0F);
+    ImGuiColors[ImGuiCol_ScrollbarGrabHovered]  = ImVec4(0.1568627506494522f, 0.168627455830574f, 0.1921568661928177f, 1.0F);
+    ImGuiColors[ImGuiCol_ScrollbarGrabActive]   = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0F);
+    ImGuiColors[ImGuiCol_CheckMark]             = ImVec4(0.9725490212440491f, 1.0F, 0.4980392158031464f, 1.0F);
+    ImGuiColors[ImGuiCol_SliderGrab]            = ImVec4(0.9725490212440491f, 1.0F, 0.4980392158031464f, 1.0F);
+    ImGuiColors[ImGuiCol_SliderGrabActive]      = ImVec4(1.0F, 0.7960784435272217f, 0.4980392158031464f, 1.0F);
+    ImGuiColors[ImGuiCol_Button]                = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0F);
+    ImGuiColors[ImGuiCol_ButtonHovered]         = ImVec4(0.1803921610116959f, 0.1882352977991104f, 0.196078434586525f, 1.0F);
+    ImGuiColors[ImGuiCol_ButtonActive]          = ImVec4(0.1529411822557449f, 0.1529411822557449f, 0.1529411822557449f, 1.0F);
+    ImGuiColors[ImGuiCol_Header]                = ImVec4(0.1411764770746231f, 0.1647058874368668f, 0.2078431397676468f, 1.0F);
+    ImGuiColors[ImGuiCol_HeaderHovered]         = ImVec4(0.105882354080677f, 0.105882354080677f, 0.105882354080677f, 1.0F);
+    ImGuiColors[ImGuiCol_HeaderActive]          = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0F);
+    ImGuiColors[ImGuiCol_Separator]             = ImVec4(0.1294117718935013f, 0.1490196138620377f, 0.1921568661928177f, 1.0F);
+    ImGuiColors[ImGuiCol_SeparatorHovered]      = ImVec4(0.1568627506494522f, 0.1843137294054031f, 0.250980406999588f, 1.0F);
+    ImGuiColors[ImGuiCol_SeparatorActive]       = ImVec4(0.1568627506494522f, 0.1843137294054031f, 0.250980406999588f, 1.0F);
+    ImGuiColors[ImGuiCol_ResizeGrip]            = ImVec4(0.1450980454683304f, 0.1450980454683304f, 0.1450980454683304f, 1.0F);
+    ImGuiColors[ImGuiCol_ResizeGripHovered]     = ImVec4(0.9725490212440491f, 1.0F, 0.4980392158031464f, 1.0F);
+    ImGuiColors[ImGuiCol_ResizeGripActive]      = ImVec4(1.0F, 1.0F, 1.0F, 1.0F);
+    ImGuiColors[ImGuiCol_Tab]                   = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0F);
+    ImGuiColors[ImGuiCol_TabHovered]            = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0F);
+    ImGuiColors[ImGuiCol_TabActive]             = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0F);
+    ImGuiColors[ImGuiCol_TabUnfocused]          = ImVec4(0.0784313753247261f, 0.08627451211214066f, 0.1019607856869698f, 1.0F);
+    ImGuiColors[ImGuiCol_TabUnfocusedActive]    = ImVec4(0.125490203499794f, 0.2745098173618317f, 0.572549045085907f, 1.0F);
+    ImGuiColors[ImGuiCol_PlotLines]             = ImVec4(0.5215686559677124f, 0.6000000238418579f, 0.7019608020782471f, 1.0F);
+    ImGuiColors[ImGuiCol_PlotLinesHovered]      = ImVec4(0.03921568766236305f, 0.9803921580314636f, 0.9803921580314636f, 1.0F);
+    ImGuiColors[ImGuiCol_PlotHistogram]         = ImVec4(0.8823529481887817f, 0.7960784435272217f, 0.5607843399047852f, 1.0F);
+    ImGuiColors[ImGuiCol_PlotHistogramHovered]  = ImVec4(0.95686274766922f, 0.95686274766922f, 0.95686274766922f, 1.0F);
+    ImGuiColors[ImGuiCol_TableHeaderBg]         = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0F);
+    ImGuiColors[ImGuiCol_TableBorderStrong]     = ImVec4(0.0470588244497776f, 0.05490196123719215f, 0.07058823853731155f, 1.0F);
+    ImGuiColors[ImGuiCol_TableBorderLight]      = ImVec4(0.0F, 0.0F, 0.0F, 1.0F);
+    ImGuiColors[ImGuiCol_TableRowBg]            = ImVec4(0.1176470592617989f, 0.1333333402872086f, 0.1490196138620377f, 1.0F);
+    ImGuiColors[ImGuiCol_TableRowBgAlt]         = ImVec4(0.09803921729326248f, 0.105882354080677f, 0.1215686276555061f, 1.0F);
+    ImGuiColors[ImGuiCol_TextSelectedBg]        = ImVec4(0.9372549057006836f, 0.9372549057006836f, 0.9372549057006836f, 1.0F);
+    ImGuiColors[ImGuiCol_DragDropTarget]        = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0F, 1.0F);
+    ImGuiColors[ImGuiCol_NavHighlight]          = ImVec4(0.2666666805744171f, 0.2901960909366608f, 1.0F, 1.0F);
+    ImGuiColors[ImGuiCol_NavWindowingHighlight] = ImVec4(0.4980392158031464f, 0.5137255191802979f, 1.0F, 1.0F);
+    ImGuiColors[ImGuiCol_NavWindowingDimBg]     = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176F);
+    ImGuiColors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176F);
+}
+
 void ImGuiLayer::CompileShader()
 {
     try
@@ -405,8 +571,11 @@ void ImGuiLayer::CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpi
                                                .EnableDepthOp = false});
 }
 
-void ImGuiLayer::TransitionImageLayout(const VkImageLayout OldLayout, const VkImageLayout NewLayout) const
+void ImGuiLayer::TransitionTextureToReadState() const
 {
+    constexpr VkImageLayout FromLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    constexpr VkImageLayout ToLayout   = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
     const VkDevice&     LogicalDevice = m_Device->GetLogicalDevice();
     const std::uint32_t QueueFamily   = m_Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
     const VkQueue&      Queue         = m_Device->GetQueue(QueueFamily);
@@ -439,25 +608,18 @@ void ImGuiLayer::TransitionImageLayout(const VkImageLayout OldLayout, const VkIm
     VkAccessFlags                  SrcAccess = 0;
     constexpr VkAccessFlags        DstAccess = VK_ACCESS_SHADER_READ_BIT;
 
-    if (OldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-    {
-        SrcStage  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        SrcAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    }
-
     const VkImageMemoryBarrier Barrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                                        .pNext = nullptr,
                                        .srcAccessMask = SrcAccess,
                                        .dstAccessMask = DstAccess,
-                                       .oldLayout = OldLayout,
-                                       .newLayout = NewLayout,
+                                       .oldLayout = FromLayout,
+                                       .newLayout = ToLayout,
                                        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                                        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                                        .image = m_PreviewImage->GetHandle(),
                                        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
 
     vkCmdPipelineBarrier(CommandBuffer, SrcStage, DstStage, 0, 0, nullptr, 0, nullptr, 1, &Barrier);
-
     vkEndCommandBuffer(CommandBuffer);
 
     const VkSubmitInfo QueueSubmitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,

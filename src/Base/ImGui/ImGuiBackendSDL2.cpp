@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/UserInterface/ImGuiBackendSDL2.hpp"
+#include "luvk_example/Base/ImGui/ImGuiBackendSDL2.hpp"
 #include <imgui.h>
 #include <SDL2/SDL_vulkan.h>
 
@@ -60,7 +60,8 @@ void ImGuiBackendSDL2::NewFrame() const
 
     if (Width > 0 && Height > 0)
     {
-        GuiIO.DisplayFramebufferScale = ImVec2(static_cast<float>(DrawWidth) / Width, static_cast<float>(DrawHeight) / Height);
+        GuiIO.DisplayFramebufferScale = ImVec2(static_cast<float>(DrawWidth) / static_cast<float>(Width),
+                                               static_cast<float>(DrawHeight) / static_cast<float>(Height));
     }
 
     if (!(GuiIO.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange))

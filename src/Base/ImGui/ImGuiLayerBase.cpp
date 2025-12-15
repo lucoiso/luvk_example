@@ -2,9 +2,9 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/UserInterface/ImGuiLayerBase.hpp"
+#include "luvk_example/Base/ImGui/ImGuiLayerBase.hpp"
 #include <imgui.h>
-#include "luvk_example/UserInterface/ImGuiMesh.hpp"
+#include "luvk_example/Base/ImGui/ImGuiMesh.hpp"
 
 using namespace luvk_example;
 
@@ -22,8 +22,9 @@ bool ImGuiLayerBase::Initialize(SDL_Window*                                  Win
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+
     ImGuiIO& IO    = ImGui::GetIO();
-    IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NavEnableKeyboard;
 
     const bool IsOk = m_SdlBackend.Init(Window);
     m_Mesh          = std::make_unique<ImGuiMesh>(Device, Pool, Swap, Memory);
@@ -57,7 +58,7 @@ void ImGuiLayerBase::NewFrame(const float DeltaTime) const
     }
 }
 
-void ImGuiLayerBase::Render(const VkCommandBuffer& Cmd, std::uint32_t CurrentFrame) const
+void ImGuiLayerBase::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFrame) const
 {
     if (m_Initialized && m_Mesh)
     {

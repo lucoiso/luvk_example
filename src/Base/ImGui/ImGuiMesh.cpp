@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/UserInterface/ImGuiMesh.hpp"
+#include "luvk_example/Base/ImGui/ImGuiMesh.hpp"
 #include <array>
 #include <cstring>
 #include <luvk/Libraries/ShaderCompiler.hpp>
@@ -302,7 +302,7 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFr
                               static_cast<uint32_t>(ClipMax.y - ClipMin.y)}};
             vkCmdSetScissor(Cmd, 0, 1, &Scissor);
 
-            const VkDescriptorSet& DescSet = reinterpret_cast<VkDescriptorSet>(CmdIt.GetTexID());
+            const auto& DescSet = reinterpret_cast<VkDescriptorSet>(CmdIt.GetTexID());
             vkCmdBindDescriptorSets(Cmd,
                                     VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     m_Pipeline->GetPipelineLayout(),

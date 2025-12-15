@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include "luvk_example/UserInterface/ImGuiLayerBase.hpp"
 #include <string>
 #include <vector>
 #include <volk/volk.h>
+#include "luvk_example/Base/ImGui/ImGuiLayerBase.hpp"
 
 namespace luvk
 {
@@ -39,10 +39,11 @@ namespace luvk_example
         void UpdatePreview(const VkCommandBuffer& Cmd);
 
     private:
+        void PushStyle() const;
         void CompileShader();
         void CreatePreviewPipeline(const std::vector<std::uint32_t>& FragSpirv);
 
         static int InputTextCallback(struct ImGuiInputTextCallbackData* Data);
-        void       TransitionImageLayout(VkImageLayout OldLayout, VkImageLayout NewLayout) const;
+        void       TransitionTextureToReadState() const;
     };
 } // namespace luvk_example

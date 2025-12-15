@@ -5,8 +5,8 @@
 #include "luvk_example/Core/Application.hpp"
 #include <chrono>
 #include <glm/gtc/matrix_transform.hpp>
-#include <luvk/Modules/Renderer.hpp>
 #include <luvk/Modules/Device.hpp>
+#include <luvk/Modules/Renderer.hpp>
 #include <SDL2/SDL_vulkan.h>
 
 using namespace luvk_example;
@@ -36,19 +36,19 @@ bool Application::Initialize()
         CreateScene();
         RegisterInputBindings();
 
-        m_Renderer->SetPreRenderCallback([this](const VkCommandBuffer Cmd)
+        m_Renderer->SetPreRenderCallback([this](const VkCommandBuffer& Cmd)
         {
             m_TriangleMesh->Compute(Cmd);
             m_ImGuiLayer.UpdatePreview(Cmd);
         });
 
-        m_Renderer->SetDrawCallback([this](const VkCommandBuffer Cmd)
+        m_Renderer->SetDrawCallback([this](const VkCommandBuffer& Cmd)
         {
             const auto CurrentFrame = static_cast<std::uint32_t>(m_SynchronizationModule->GetCurrentFrame());
 
-            m_CubeMesh->Draw(Cmd);
-            m_TriangleMesh->Draw(Cmd);
-            m_PixelMesh->Draw(Cmd);
+            m_CubeMesh->Draw(Cmd, {});
+            m_TriangleMesh->Draw(Cmd, {});
+            m_PixelMesh->Draw(Cmd, {});
             m_ImGuiLayer.Render(Cmd, CurrentFrame);
         });
 
@@ -97,8 +97,8 @@ bool Application::Render()
         return true;
     }
 
-    int W = 0;
-    int H = 0;
+    std::int32_t W = 0;
+    std::int32_t H = 0;
     SDL_Vulkan_GetDrawableSize(m_Window, &W, &H);
 
     static auto LastTime    = std::chrono::high_resolution_clock::now();
@@ -111,7 +111,6 @@ bool Application::Render()
     Proj[1][1]     *= -1.F;
 
     m_CubeMesh->Update(DeltaTime, m_Camera.GetViewMatrix(), Proj);
-    m_TriangleMesh->Update(DeltaTime);
 
     if (m_ImGuiLayer.IsInitialized())
     {
@@ -159,10 +158,11 @@ void Application::RegisterInputBindings()
                       {
                           if (Event.button.button == SDL_BUTTON_RIGHT && !ImGui::GetIO().WantCaptureMouse)
                           {
-                              int NewW = 0;
-                              int NewH = 0;
+                              std::int32_t NewW = 0;
+                              std::int32_t NewH = 0;
                               SDL_Vulkan_GetDrawableSize(m_Window, &NewW, &NewH);
-                              const glm::vec2 Position{2.F * Event.button.x / NewW - 1.F, 2.F * Event.button.y / NewH - 1.F};
+                              const glm::vec2 Position{2.F * static_cast<float>(Event.button.x) / static_cast<float>(NewW) - 1.F,
+                                                       2.F * static_cast<float>(Event.button.y) / static_cast<float>(NewH) - 1.F};
                               m_TriangleMesh->AddInstance(Position);
                           }
                       });

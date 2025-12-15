@@ -6,7 +6,7 @@
 
 #include <memory>
 #include <SDL2/SDL.h>
-#include "luvk_example/Core/InputManager.hpp"
+#include "luvk_example/Components/InputManager.hpp"
 
 namespace luvk
 {

@@ -4,6 +4,7 @@
 
 #include "luvk_example/Meshes/Triangle.hpp"
 #include <array>
+#include <random>
 #include <glm/gtc/constants.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/SwapChain.hpp>
@@ -11,7 +12,6 @@
 #include <luvk/Resources/DescriptorSet.hpp>
 #include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Types/Material.hpp>
-#include <random>
 
 using namespace luvk_example;
 
@@ -145,8 +145,6 @@ Triangle::Triangle(const std::shared_ptr<luvk::Device>&         Device,
     UploadVertices(std::as_bytes(std::span{g_Vertices}), 3);
     UploadIndices(std::span{g_Indices});
 }
-
-void Triangle::Update(const float DeltaTime) const {}
 
 void Triangle::Compute(const VkCommandBuffer& Cmd) const
 {
