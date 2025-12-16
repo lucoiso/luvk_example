@@ -15,7 +15,7 @@ namespace luvk
     class Buffer;
     class DescriptorPool;
     class SwapChain;
-} // namespace luvk
+}
 
 namespace luvk_example
 {
@@ -31,9 +31,9 @@ namespace luvk_example
 
     class Triangle : public luvk::Mesh
     {
+        float                           m_DeltaTime{0.f};
         std::shared_ptr<luvk::Pipeline> m_ComputePipeline{};
         std::shared_ptr<luvk::Buffer>   m_ParticleBuffer{};
-        std::shared_ptr<luvk::Buffer>   m_ComputeUBO{};
         std::shared_ptr<luvk::Material> m_GraphicsMat{};
         std::shared_ptr<luvk::Material> m_ComputeMat{};
         luvk::Vector<Particle>          m_Particles{};
@@ -47,6 +47,8 @@ namespace luvk_example
         void AddInstance(glm::vec2 const& Position);
 
         void Compute(const VkCommandBuffer& Cmd) const;
-        void Draw(const VkCommandBuffer& Cmd, std::span<const std::byte> PushConstants) const override;
+
+        void Tick(float DeltaTime) override;
+        void Render(const VkCommandBuffer& Cmd, std::uint32_t CurrentFrame) const override;
     };
-} // namespace luvk_example
+}

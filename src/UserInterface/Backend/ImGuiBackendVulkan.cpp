@@ -2,7 +2,7 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Base/ImGui/ImGuiMesh.hpp"
+#include "luvk_example/UserInterface/Backend/ImGuiBackendVulkan.hpp"
 #include <cstring>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/DescriptorPool.hpp>
@@ -32,21 +32,18 @@ struct PC {
 	float2 scale;
 	float2 translate;
 };
-[[vk::push_constant]] ConstantBuffer<PC> pc;
-
-struct VSOutput {
-	float4 Position : SV_POSITION;
-	[[vk::location(0)]] float2 fragUV;
-	[[vk::location(1)]] float4 fragColor;
-};
+[[vk::push_constant]] PC pc;
 
 [shader("vertex")]
-VSOutput main(VSInput input) {
-	VSOutput output;
-	output.fragUV = input.inUV;
-	output.fragColor = input.inColor;
-	output.Position = float4(input.inPos * pc.scale + pc.translate, 0.0, 1.0);
-	return output;
+void main(
+    VSInput input,
+    out float4 Position : SV_POSITION,
+    [[vk::location(0)]] out float2 fragUV,
+    [[vk::location(1)]] out float4 fragColor)
+{
+	fragUV = input.inUV;
+	fragColor = input.inColor;
+	Position = float4(input.inPos * pc.scale + pc.translate, 0.0, 1.0);
 }
 )";
 
@@ -59,9 +56,9 @@ struct VSOutput {
 [[vk::binding(0, 0)]] Sampler2D Font;
 
 [shader("fragment")]
-float4 main(VSOutput input) {
+float4 main(VSOutput input) : SV_Target {
 	float4 sampledColor = Font.Sample(input.fragUV);
-	[[vk::location(0)]] float4 outColor = input.fragColor * sampledColor;
+	float4 outColor = input.fragColor * sampledColor;
     return outColor;
 }
 )";
@@ -84,21 +81,15 @@ constexpr luvk::Array g_Attributes{
     VkVertexInputAttributeDescription{2, 0, VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col)}
 };
 
-ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::Device>&         Device,
-                     const std::shared_ptr<luvk::DescriptorPool>& Pool,
-                     const std::shared_ptr<luvk::SwapChain>&      Swap,
-                     const std::shared_ptr<luvk::Memory>&         Memory)
+ImGuiBackendVulkan::ImGuiBackendVulkan(const std::shared_ptr<luvk::Device>&         Device,
+                                       const std::shared_ptr<luvk::DescriptorPool>& Pool,
+                                       const std::shared_ptr<luvk::SwapChain>&      Swap,
+                                       const std::shared_ptr<luvk::Memory>&         Memory)
     : m_DescPool(Pool),
       m_Device(Device),
       m_SwapChain(Swap),
       m_Memory(Memory)
 {
-    const std::size_t ImageCount = std::size(m_SwapChain->GetImages());
-    m_VtxBuffers.resize(ImageCount);
-    m_IdxBuffers.resize(ImageCount);
-    m_VtxBufferSizes.resize(ImageCount, 0);
-    m_IdxBufferSizes.resize(ImageCount, 0);
-
     ImGuiIO& IO            = ImGui::GetIO();
     IO.BackendRendererName = "ImGuiBackendLUVK";
     IO.BackendFlags        |= ImGuiBackendFlags_RendererHasVtxOffset;
@@ -122,23 +113,20 @@ ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::Device>&         Device,
 
     Staging->Upload({reinterpret_cast<const std::byte*>(Pixels), static_cast<size_t>(Width * Height * 4)});
 
-    m_FontImage = std::make_shared<luvk::Image>(Device, Memory);
-    m_FontImage->CreateImage({.Extent = {static_cast<uint32_t>(Width), static_cast<uint32_t>(Height), 1},
-                              .Format = VK_FORMAT_R8G8B8A8_UNORM,
-                              .Usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                              .Aspect = VK_IMAGE_ASPECT_COLOR_BIT,
-                              .MemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY});
+    auto FontImage = std::make_shared<luvk::Image>(Device, Memory);
+    FontImage->CreateImage({.Extent = {static_cast<uint32_t>(Width), static_cast<uint32_t>(Height), 1},
+                            .Format = VK_FORMAT_R8G8B8A8_UNORM,
+                            .Usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                            .Aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+                            .MemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY});
 
-    m_FontImage->Upload(Staging);
+    FontImage->Upload(Staging);
 
-    m_FontSampler = std::make_shared<luvk::Sampler>(Device);
-    m_FontSampler->CreateSampler({.Filter = VK_FILTER_LINEAR,
-                                  .AddressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});
+    auto FontSampler = std::make_shared<luvk::Sampler>(Device);
+    FontSampler->CreateSampler({.Filter = VK_FILTER_LINEAR,
+                                .AddressMode = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});
 
-    m_FontSet->UpdateImage(m_FontImage->GetView(),
-                           m_FontSampler->GetHandle(),
-                           0,
-                           VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    m_FontTexture = std::make_shared<luvk::Texture>(FontImage, FontSampler);
 
     IO.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_FontSet->GetHandle()));
     constexpr VkPushConstantRange PCRange{
@@ -165,13 +153,13 @@ ImGuiMesh::ImGuiMesh(const std::shared_ptr<luvk::Device>&         Device,
     const auto Mat = std::make_shared<luvk::Material>();
     Mat->SetPipeline(m_Pipeline);
     Mat->SetDescriptorSet(m_FontSet);
-    Mat->SetTexture(std::make_shared<luvk::Texture>(m_FontImage, m_FontSampler));
+    Mat->SetTexture(m_FontTexture);
 
     m_Mesh = std::make_shared<luvk::Mesh>(m_Device, m_Memory);
     m_Mesh->SetMaterial(Mat);
 }
 
-void ImGuiMesh::NewFrame() const
+void ImGuiBackendVulkan::NewFrame() const
 {
     ImGuiIO& IO  = ImGui::GetIO();
     IO.DeltaTime = IO.DeltaTime > 0.F
@@ -180,7 +168,7 @@ void ImGuiMesh::NewFrame() const
     ImGui::NewFrame();
 }
 
-void ImGuiMesh::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFrame)
+void ImGuiBackendVulkan::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFrame)
 {
     ImGui::Render();
 
@@ -195,29 +183,6 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFr
     if (FbWidth <= 0 || FbHeight <= 0)
     {
         return;
-    }
-
-    const size_t VertexSize = RenderData->TotalVtxCount * sizeof(ImDrawVert);
-    const size_t IndexSize  = RenderData->TotalIdxCount * sizeof(ImDrawIdx);
-
-    if (!m_VtxBuffers[CurrentFrame] || m_VtxBufferSizes[CurrentFrame] < VertexSize)
-    {
-        m_VtxBufferSizes[CurrentFrame] = VertexSize;
-        m_VtxBuffers[CurrentFrame]     = std::make_shared<luvk::Buffer>(m_Device, m_Memory);
-        m_VtxBuffers[CurrentFrame]->CreateBuffer({.Name = "ImGUI VTX " + std::to_string(CurrentFrame),
-                                                  .Size = m_VtxBufferSizes[CurrentFrame],
-                                                  .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-                                                  .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
-    }
-
-    if (!m_IdxBuffers[CurrentFrame] || m_IdxBufferSizes[CurrentFrame] < IndexSize)
-    {
-        m_IdxBufferSizes[CurrentFrame] = IndexSize;
-        m_IdxBuffers[CurrentFrame]     = std::make_shared<luvk::Buffer>(m_Device, m_Memory);
-        m_IdxBuffers[CurrentFrame]->CreateBuffer({.Name = "ImGUI IDX " + std::to_string(CurrentFrame),
-                                                  .Size = m_IdxBufferSizes[CurrentFrame],
-                                                  .Usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-                                                  .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU});
     }
 
     m_Vertices.resize(RenderData->TotalVtxCount);
@@ -240,35 +205,23 @@ void ImGuiMesh::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFr
         IdxOffset += CmdList->IdxBuffer.Size;
     }
 
-    m_VtxBuffers[CurrentFrame]->Upload(std::as_bytes(std::span{m_Vertices}));
-    m_IdxBuffers[CurrentFrame]->Upload(std::as_bytes(std::span{m_Indices}));
+    m_Mesh->UploadVertices(std::as_bytes(std::span{m_Vertices}), RenderData->TotalVtxCount, CurrentFrame);
+    m_Mesh->UploadIndices(std::span{m_Indices}, CurrentFrame);
 
-    m_Mesh->GetMaterial()->Bind(Cmd);
-
-    const VkBuffer&        VtxHandle     = m_VtxBuffers[CurrentFrame]->GetHandle();
-    constexpr VkDeviceSize VtxOffsetZero = 0;
-    vkCmdBindVertexBuffers(Cmd, 0, 1, &VtxHandle, &VtxOffsetZero);
-    vkCmdBindIndexBuffer(Cmd,
-                         m_IdxBuffers[CurrentFrame]->GetHandle(),
-                         0,
-                         sizeof(ImDrawIdx) == 2
-                             ? VK_INDEX_TYPE_UINT16
-                             : VK_INDEX_TYPE_UINT32);
+    const auto Material = m_Mesh->GetMaterial();
+    Material->Bind(Cmd);
 
     const luvk::Array Push{2.F / RenderData->DisplaySize.x,
                            2.F / RenderData->DisplaySize.y,
                            -1.F - RenderData->DisplayPos.x * (2.F / RenderData->DisplaySize.x),
                            -1.F - RenderData->DisplayPos.y * (2.F / RenderData->DisplaySize.y)};
 
-    vkCmdPushConstants(Cmd,
-                       m_Pipeline->GetPipelineLayout(),
-                       VK_SHADER_STAGE_VERTEX_BIT,
-                       0,
-                       std::size(Push) * sizeof(float),
-                       std::data(Push));
+    m_Mesh->SetPushConstantData(std::as_bytes(std::span{Push}));
 
     const VkViewport Viewport{0.F, 0.F, static_cast<float>(FbWidth), static_cast<float>(FbHeight), 0.F, 1.F};
     vkCmdSetViewport(Cmd, 0, 1, &Viewport);
+
+    m_Mesh->Render(Cmd, CurrentFrame);
 
     const ImVec2 ClipOff   = RenderData->DisplayPos;
     const ImVec2 ClipScale = RenderData->FramebufferScale;

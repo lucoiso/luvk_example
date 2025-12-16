@@ -23,33 +23,25 @@ struct VSInput {
 	float4 color : COLOR0;
 };
 
-struct VSOutput {
-	float4 vColor : COLOR;
-	float4 Pos : SV_Position;
-};
-
 [shader("vertex")]
-VSOutput main(VSInput input)
+void main(
+    VSInput input,
+    out float4 Pos : SV_Position,
+    out float4 vColor : COLOR)
 {
-	VSOutput output;
 	float2x2 R = float2x2(cos(input.angle), -sin(input.angle),
 						  sin(input.angle), cos(input.angle));
 	float2 pos = mul(R, input.inPos) + input.offset;
-	output.Pos = float4(pos, 0.0f, 1.0f);
-	output.vColor = input.color;
-	return output;
+	Pos = float4(pos, 0.0f, 1.0f);
+	vColor = input.color;
 }
 )";
 
 constexpr auto g_FragmentShader = R"(
-struct VSOutput {
-	float4 vColor : COLOR;
-};
-
 [shader("fragment")]
-float4 main(VSOutput input) : SV_Target
+float4 main(float4 vColor : COLOR) : SV_Target
 {
-	return input.vColor;
+	return vColor;
 }
 )";
 
@@ -103,7 +95,6 @@ Triangle::Triangle(const std::shared_ptr<luvk::Device>&         Device,
     : Mesh(Device, Memory),
       m_ComputePipeline(std::make_shared<luvk::Pipeline>(Device)),
       m_ParticleBuffer(std::make_shared<luvk::Buffer>(Device, Memory)),
-      m_ComputeUBO(std::make_shared<luvk::Buffer>(Device, Memory)),
       m_GraphicsMat(std::make_shared<luvk::Material>()),
       m_ComputeMat(std::make_shared<luvk::Material>())
 {
@@ -142,8 +133,8 @@ Triangle::Triangle(const std::shared_ptr<luvk::Device>&         Device,
     m_ComputeMat->SetDescriptorSet(Set);
 
     SetMaterial(m_GraphicsMat);
-    UploadVertices(std::as_bytes(std::span{g_Vertices}), 3);
-    UploadIndices(std::span{g_Indices});
+    UploadVerticesToAll(std::as_bytes(std::span{g_Vertices}), 3);
+    UploadIndicesToAll(std::span{g_Indices});
 }
 
 void Triangle::Compute(const VkCommandBuffer& Cmd) const
@@ -153,10 +144,8 @@ void Triangle::Compute(const VkCommandBuffer& Cmd) const
         return;
     }
 
-    static float DT = 0.016f;
-
     m_ComputeMat->Bind(Cmd);
-    vkCmdPushConstants(Cmd, m_ComputePipeline->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &DT);
+    vkCmdPushConstants(Cmd, m_ComputePipeline->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &m_DeltaTime);
     vkCmdDispatch(Cmd, (static_cast<uint32_t>(std::size(m_Particles)) + 63) / 64, 1, 1);
 
     const VkBufferMemoryBarrier Barrier{.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -171,17 +160,29 @@ void Triangle::Compute(const VkCommandBuffer& Cmd) const
     vkCmdPipelineBarrier(Cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &Barrier, 0, nullptr);
 }
 
-void Triangle::Draw(const VkCommandBuffer& Cmd, std::span<const std::byte> PushConstants) const
+void Triangle::Tick(const float DeltaTime)
+{
+    m_DeltaTime = DeltaTime;
+}
+
+void Triangle::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFrame) const
 {
     m_GraphicsMat->Bind(Cmd);
 
-    const luvk::Array                      Buffers = {m_VertexBuffer->GetHandle(), m_ParticleBuffer->GetHandle()};
-    constexpr luvk::Array<VkDeviceSize, 2> Offsets = {0, 0};
+    if (const auto& VertexBuffers = const_cast<luvk::Vector<std::shared_ptr<luvk::Buffer>>&>(m_VertexBuffers);
+        !VertexBuffers.empty() && VertexBuffers[CurrentFrame])
+    {
+        const luvk::Array                      Buffers = {VertexBuffers[CurrentFrame]->GetHandle(), m_ParticleBuffer->GetHandle()};
+        constexpr luvk::Array<VkDeviceSize, 2> Offsets = {0, 0};
+        vkCmdBindVertexBuffers(Cmd, 0, static_cast<uint32_t>(std::size(Buffers)), std::data(Buffers), std::data(Offsets));
+    }
 
-    vkCmdBindVertexBuffers(Cmd, 0, static_cast<uint32_t>(std::size(Buffers)), std::data(Buffers), std::data(Offsets));
-
-    vkCmdBindIndexBuffer(Cmd, m_IndexBuffer->GetHandle(), 0, VK_INDEX_TYPE_UINT16);
-    vkCmdDrawIndexed(Cmd, m_IndexCount, m_InstanceCount, 0, 0, 0);
+    if (const auto& IndexBuffers = const_cast<luvk::Vector<std::shared_ptr<luvk::Buffer>>&>(m_IndexBuffers);
+        !IndexBuffers.empty() && IndexBuffers[CurrentFrame])
+    {
+        vkCmdBindIndexBuffer(Cmd, IndexBuffers[CurrentFrame]->GetHandle(), 0, VK_INDEX_TYPE_UINT16);
+        vkCmdDrawIndexed(Cmd, m_IndexCount, m_InstanceCount, 0, 0, 0);
+    }
 }
 
 void Triangle::AddInstance(glm::vec2 const& Position)

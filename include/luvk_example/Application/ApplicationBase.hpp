@@ -5,8 +5,10 @@
 #pragma once
 
 #include <memory>
-#include <SDL3/SDL.h>
+#include <string>
 #include "luvk_example/Components/InputManager.hpp"
+
+class SDL_Window;
 
 namespace luvk
 {
@@ -26,10 +28,17 @@ namespace luvk_example
     class ApplicationBase
     {
     protected:
-        InputManager  m_Input;
-        SDL_Window*   m_Window{};
-        std::uint32_t m_Width{};
-        std::uint32_t m_Height{};
+        bool m_CanRender{true};
+        bool m_ResizePending{false};
+
+        std::int32_t m_Width{};
+        std::int32_t m_Height{};
+        std::string  m_Title{};
+
+        float m_DeltaTime{0.f};
+
+        InputManager m_Input;
+        SDL_Window*  m_Window{};
 
         std::shared_ptr<luvk::Renderer>        m_Renderer{};
         std::shared_ptr<luvk::Debug>           m_DebugModule{};
@@ -47,6 +56,28 @@ namespace luvk_example
 
         virtual bool Initialize();
         virtual bool Render();
+
+        [[nodiscard]] constexpr std::uint32_t GetWidth() const noexcept
+        {
+            return static_cast<std::uint32_t>(m_Width);
+        }
+
+        [[nodiscard]] constexpr std::uint32_t GetHeight() const noexcept
+        {
+            return static_cast<std::uint32_t>(m_Height);
+        }
+
+        void SetTitle(std::string_view Title);
+
+        [[nodiscard]] constexpr std::string_view GetTitle() const noexcept
+        {
+            return m_Title;
+        }
+
+        [[nodiscard]] constexpr float GetDeltaTime() const noexcept
+        {
+            return m_DeltaTime;
+        }
 
         [[nodiscard]] constexpr InputManager& GetInput() noexcept
         {

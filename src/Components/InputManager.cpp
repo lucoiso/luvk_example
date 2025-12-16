@@ -3,10 +3,11 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/Components/InputManager.hpp"
+#include <SDL3/SDL_mouse.h>
 
 using namespace luvk_example;
 
-void InputManager::BindEvent(const Uint32                            Type,
+void InputManager::BindEvent(const std::uint32_t                     Type,
                              std::function<void(const SDL_Event&)>&& Callback)
 {
     auto [Iterator, Inserted] = m_Bindings.try_emplace(Type, EventCallbacks{});
@@ -42,6 +43,10 @@ void InputManager::ProcessEvents()
                 {
                     m_LeftHeld = true;
                 }
+                else if (Event.button.button == SDL_BUTTON_RIGHT)
+                {
+                    m_RightHeld = false;
+                }
                 break;
             }
         case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -49,6 +54,10 @@ void InputManager::ProcessEvents()
                 if (Event.button.button == SDL_BUTTON_LEFT)
                 {
                     m_LeftHeld = false;
+                }
+                else if (Event.button.button == SDL_BUTTON_RIGHT)
+                {
+                    m_RightHeld = false;
                 }
                 break;
             }
@@ -60,7 +69,7 @@ void InputManager::ProcessEvents()
     }
 }
 
-void InputManager::InvokeCallbacks(const Uint32 Type, const SDL_Event& Event)
+void InputManager::InvokeCallbacks(const std::uint32_t Type, const SDL_Event& Event)
 {
     if (const auto It = m_Bindings.find(Type);
         It != std::end(m_Bindings))
@@ -72,7 +81,7 @@ void InputManager::InvokeCallbacks(const Uint32 Type, const SDL_Event& Event)
     }
 }
 
-bool InputManager::IsKeyPressed(const SDL_Keycode key) const noexcept
+bool InputManager::IsKeyPressed(const std::uint32_t key) const noexcept
 {
     return m_PressedKeys.contains(key);
 }

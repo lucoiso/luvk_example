@@ -14,15 +14,13 @@ namespace luvk
     class Buffer;
     class DescriptorPool;
     class SwapChain;
-} // namespace luvk
+}
 
 namespace luvk_example
 {
     class Cube : public luvk::Mesh
     {
         std::shared_ptr<luvk::Pipeline> m_Pipeline{};
-        std::shared_ptr<luvk::Buffer>   m_UBO{};
-        std::shared_ptr<luvk::Material> m_Mat{};
         mutable glm::mat4               m_Mvp{1.f};
 
     public:
@@ -31,6 +29,6 @@ namespace luvk_example
              const std::shared_ptr<luvk::Memory>&         Memory,
              const std::shared_ptr<luvk::DescriptorPool>& Pool);
 
-        void Update(float DeltaTime, glm::mat4 const& View, glm::mat4 const& Proj) const;
+        void Tick(float DeltaTime) override;
     };
-} // namespace luvk_example
+}

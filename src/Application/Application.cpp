@@ -2,123 +2,100 @@
 // Year: 2025
 // Repo: https://github.com/lucoiso/luvk_example
 
-#include "luvk_example/Core/Application.hpp"
+#include "luvk_example/Application/Application.hpp"
 #include <chrono>
-#include <glm/gtc/matrix_transform.hpp>
+#include <imgui.h>
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Modules/Renderer.hpp>
+#include <luvk/Modules/Synchronization.hpp>
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_vulkan.h>
+#include "luvk_example/Meshes/Cube.hpp"
+#include "luvk_example/Meshes/Pixel.hpp"
+#include "luvk_example/Meshes/Triangle.hpp"
+#include "luvk_example/UserInterface/ImGuiLayer.hpp"
 
 using namespace luvk_example;
 
-Application::Application() : ApplicationBase(800, 600) {}
+constexpr std::uint32_t g_ImageCount = 3U;
+
+Application::Application(const std::uint32_t Width, const std::uint32_t Height)
+    : ApplicationBase(Width, Height)
+{
+    ApplicationBase::Initialize();
+
+    const std::string InitTitle = m_Title;
+
+    m_ImGuiLayer = std::make_unique<ImGuiLayer>(m_Window,
+                                                m_DeviceModule,
+                                                m_DescriptorPoolModule,
+                                                m_SwapChainModule,
+                                                m_MemoryModule);
+
+    CreateScene();
+    RegisterInputBindings();
+
+    m_Renderer->SetPreRenderCallback([this, InitTitle](const VkCommandBuffer& Cmd)
+    {
+        {
+            static float        Interval   = 0.f;
+            static std::int32_t FrameCount = 0;
+
+            Interval += m_DeltaTime;
+            FrameCount++;
+
+            if (Interval > 1.f)
+            {
+                const float FPS         = static_cast<float>(FrameCount) / Interval;
+                const float DeltaTimeMs = (Interval / static_cast<float>(FrameCount)) * 1000.f;
+
+                SetTitle(std::format("{} - {:.2f} FPS ({:.2f} ms)", InitTitle, FPS, DeltaTimeMs));
+
+                Interval   = 0.f;
+                FrameCount = 0;
+            }
+        }
+
+        if (!ImGui::GetIO().WantCaptureMouse)
+        {
+            m_Camera.Update(m_DeltaTime, m_Input);
+        }
+
+        m_CubeMesh->Tick(m_DeltaTime);
+        m_TriangleMesh->Tick(m_DeltaTime);
+        m_PixelMesh->Tick(m_DeltaTime);
+
+        m_ImGuiLayer->Draw();
+        m_ImGuiLayer->UpdatePreview(Cmd);
+
+        m_TriangleMesh->Compute(Cmd);
+    });
+
+    m_Renderer->SetDrawCallback([this](const VkCommandBuffer& Cmd)
+    {
+        const auto FrameIndex = static_cast<std::uint32_t>(m_SynchronizationModule->GetCurrentFrame());
+        m_CubeMesh->Render(Cmd, FrameIndex);
+        m_TriangleMesh->Render(Cmd, FrameIndex);
+        m_PixelMesh->Render(Cmd, FrameIndex);
+
+        m_ImGuiLayer->Render(Cmd, FrameIndex);
+    });
+}
 
 Application::~Application()
 {
-    if (m_DeviceModule)
-    {
-        m_DeviceModule->WaitIdle();
-    }
+    m_DeviceModule->WaitIdle();
 
-    m_ImGuiLayer.Shutdown();
-}
-
-bool Application::Initialize()
-{
-    if (ApplicationBase::Initialize())
-    {
-        if (!m_ImGuiLayer.Initialize(m_Window, m_DeviceModule, m_DescriptorPoolModule, m_SwapChainModule, m_MemoryModule))
-        {
-            return false;
-        }
-
-        m_ImGuiLayer.InitializeEditorResources();
-
-        CreateScene();
-        RegisterInputBindings();
-
-        m_Renderer->SetPreRenderCallback([this](const VkCommandBuffer& Cmd)
-        {
-            m_TriangleMesh->Compute(Cmd);
-            m_ImGuiLayer.UpdatePreview(Cmd);
-        });
-
-        m_Renderer->SetDrawCallback([this](const VkCommandBuffer& Cmd)
-        {
-            const auto CurrentFrame = static_cast<std::uint32_t>(m_SynchronizationModule->GetCurrentFrame());
-
-            m_CubeMesh->Draw(Cmd, {});
-            m_TriangleMesh->Draw(Cmd, {});
-            m_PixelMesh->Draw(Cmd, {});
-            m_ImGuiLayer.Render(Cmd, CurrentFrame);
-        });
-
-        return true;
-    }
-
-    return false;
+    m_CubeMesh.reset();
+    m_TriangleMesh.reset();
+    m_PixelMesh.reset();
+    m_ImGuiLayer.reset();
 }
 
 Application& Application::GetInstance()
 {
-    static Application    Instance;
-    static std::once_flag InitFlag;
-    std::call_once(InitFlag,
-                   [&]
-                   {
-                       if (!Instance.Initialize())
-                       {
-                           throw std::runtime_error("Failed to initialize");
-                       }
-                   });
+    static Application Instance(800, 600);
     return Instance;
-}
-
-bool Application::Render()
-{
-    m_Input.ProcessEvents();
-    if (!m_Input.Running())
-    {
-        return false;
-    }
-
-    if (!m_CanRender)
-    {
-        return true;
-    }
-
-    std::int32_t Width  = 0;
-    std::int32_t Height = 0;
-    SDL_GetWindowSizeInPixels(m_Window, &Width, &Height);
-
-    if (m_ResizePending && Width > 0 && Height > 0)
-    {
-        m_Renderer->SetPaused(true);
-        m_Renderer->Refresh({static_cast<std::uint32_t>(Width), static_cast<std::uint32_t>(Height)});
-        m_Renderer->SetPaused(false);
-        m_ResizePending = false;
-        m_CanRender     = true;
-    }
-
-    static auto LastTime    = std::chrono::high_resolution_clock::now();
-    const auto  CurrentTime = std::chrono::high_resolution_clock::now();
-    const float DeltaTime   = std::chrono::duration<float>(CurrentTime - LastTime).count();
-    LastTime                = CurrentTime;
-
-    m_Camera.Update(DeltaTime, m_Input);
-    glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(Width) / static_cast<float>(Height), 0.1F, 10.F);
-    Proj[1][1]     *= -1.F;
-
-    m_CubeMesh->Update(DeltaTime, m_Camera.GetViewMatrix(), Proj);
-
-    if (m_ImGuiLayer.IsInitialized())
-    {
-        m_ImGuiLayer.NewFrame(DeltaTime);
-        m_ImGuiLayer.Draw();
-    }
-
-    m_Renderer->DrawFrame();
-    return true;
 }
 
 void Application::CreateScene()
@@ -161,6 +138,7 @@ void Application::RegisterInputBindings()
 
                               const glm::vec2 Position{2.F * Event.button.x / static_cast<float>(NewW) - 1.F,
                                                        2.F * Event.button.y / static_cast<float>(NewH) - 1.F};
+
                               m_TriangleMesh->AddInstance(Position);
                           }
                       });
@@ -176,6 +154,7 @@ void Application::RegisterInputBindings()
 
                               const glm::vec2 Position{2.F * Event.motion.x / static_cast<float>(NewW) - 1.F,
                                                        2.F * Event.motion.y / static_cast<float>(NewH) - 1.F};
+
                               m_PixelMesh->AddInstance(Position);
                           }
                       });
@@ -183,6 +162,6 @@ void Application::RegisterInputBindings()
     m_Input.BindEvent(SDL_EVENT_USER,
                       [&](const SDL_Event& Event)
                       {
-                          [[maybe_unused]] auto _ = m_ImGuiLayer.ProcessEvent(Event);
+                          [[maybe_unused]] auto _ = m_ImGuiLayer && m_ImGuiLayer->ProcessEvent(Event);
                       });
 }

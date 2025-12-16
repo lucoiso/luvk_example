@@ -7,49 +7,50 @@
 #include <string>
 #include <volk.h>
 #include <luvk/Types/Vector.hpp>
-#include "luvk_example/Base/ImGui/ImGuiLayerBase.hpp"
+#include "luvk_example/UserInterface/ImGuiLayerBase.hpp"
+
+struct ImGuiInputTextCallbackData;
 
 namespace luvk
 {
-    class Image;
-    class Sampler;
-    class Pipeline;
-    class DescriptorSet;
-} // namespace luvk
+    class DescriptorPool;
+}
 
 namespace luvk_example
 {
+    class ShaderImage;
+
     class ImGuiLayer : public ImGuiLayerBase
     {
         bool        m_CompileSuccess{true};
         std::string m_ShaderCode;
         std::string m_StatusMessage{"Ready"};
-        float       m_TotalTime{0.0f};
 
-        std::shared_ptr<luvk::Image>         m_PreviewImage{};
-        std::shared_ptr<luvk::Sampler>       m_PreviewSampler{};
-        VkRenderPass                         m_PreviewRenderPass{VK_NULL_HANDLE};
-        VkFramebuffer                        m_PreviewFramebuffer{VK_NULL_HANDLE};
-        std::shared_ptr<luvk::Pipeline>      m_PreviewPipeline{};
-        std::shared_ptr<luvk::DescriptorSet> m_TextureID{};
-        luvk::Vector<std::uint32_t>          m_CachedDefaultShader{};
-        luvk::Vector<std::uint32_t>          m_CachedVertexShader{};
+        std::unique_ptr<ShaderImage> m_ShaderImage{};
 
     public:
-        void InitializeEditorResources();
+        explicit ImGuiLayer(SDL_Window*                                  Window,
+                            std::shared_ptr<luvk::Device> const&         Device,
+                            std::shared_ptr<luvk::DescriptorPool> const& Pool,
+                            std::shared_ptr<luvk::SwapChain> const&      Swap,
+                            std::shared_ptr<luvk::Memory> const&         Memory);
+
+        ~ImGuiLayer() override;
+
         void Draw() override;
         void UpdatePreview(const VkCommandBuffer& Cmd);
 
     private:
+        void InitializeResources(std::shared_ptr<luvk::Device> const&         Device,
+                                 std::shared_ptr<luvk::DescriptorPool> const& Pool,
+                                 std::shared_ptr<luvk::Memory> const&         Memory);
+
         void DrawDockspace() const;
         void DrawEditor();
         void DrawTexture() const;
 
-        void PushStyle() const;
         void CompileShader();
-        void CreatePreviewPipeline(const luvk::Vector<std::uint32_t>& FragSpirv);
 
-        static int InputTextCallback(struct ImGuiInputTextCallbackData* Data);
-        void       TransitionTextureToReadState() const;
+        static int InputTextCallback(ImGuiInputTextCallbackData* Data);
     };
-} // namespace luvk_example
+}

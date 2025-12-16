@@ -4,8 +4,7 @@
 
 #include <cstdio>
 #include <exception>
-#include <thread>
-#include "luvk_example/Core/Application.hpp"
+#include "luvk_example/Application/Application.hpp"
 
 #ifdef main
 #undef main
@@ -19,10 +18,7 @@ std::int32_t main()
     {
         Application& AppInstance = Application::GetInstance();
 
-        do
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(15));
-        }
+        do {}
         while (AppInstance.Render());
 
         return EXIT_SUCCESS;
