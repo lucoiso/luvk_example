@@ -147,6 +147,11 @@ void ImGuiBackendVulkan::SetWindowSize(ImGuiViewport* const Viewport, const ImVe
     if (const auto* Data = static_cast<ViewportData*>(Viewport->RendererUserData);
         Data != nullptr)
     {
+        const auto Backend = static_cast<ImGuiBackendVulkan*>(ImGui::GetIO().BackendRendererUserData);
+        const auto Device  = Backend->GetDevice();
+
+        Device->Wait(Device->GetQueue(Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value()));
+
         Data->SwapChain->Recreate({static_cast<std::uint32_t>(Size.x), static_cast<std::uint32_t>(Size.y)}, nullptr);
     }
 }
