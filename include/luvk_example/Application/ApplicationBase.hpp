@@ -28,7 +28,7 @@ namespace luvk_example
     class ApplicationBase
     {
     protected:
-        bool m_CanRender{true};
+        bool m_CanRender{false};
         bool m_ResizePending{false};
 
         std::int32_t m_Width{};
@@ -51,7 +51,7 @@ namespace luvk_example
         std::shared_ptr<luvk::DescriptorPool>  m_DescriptorPoolModule{};
 
     public:
-        explicit ApplicationBase(std::uint32_t Width, std::uint32_t Height);
+        explicit ApplicationBase(std::uint32_t Width, std::uint32_t Height, SDL_WindowFlags Flags);
         virtual  ~ApplicationBase();
 
         virtual bool Initialize();

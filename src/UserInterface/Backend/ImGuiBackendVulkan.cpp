@@ -71,15 +71,15 @@ constexpr VkDescriptorSetLayoutBinding g_FontBinding{
     nullptr
 };
 
-constexpr luvk::Array g_Bindings{
-    VkVertexInputBindingDescription{0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX}
-};
+constexpr luvk::Array g_Bindings{VkVertexInputBindingDescription{0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX}};
 
-constexpr luvk::Array g_Attributes{
-    VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, pos)},
-    VkVertexInputAttributeDescription{1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, uv)},
-    VkVertexInputAttributeDescription{2, 0, VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col)}
-};
+constexpr luvk::Array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, pos)},
+                                   VkVertexInputAttributeDescription{1, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, uv)},
+                                   VkVertexInputAttributeDescription{2, 0, VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col)}};
+
+constexpr VkPushConstantRange g_PushConstantRange{VK_SHADER_STAGE_VERTEX_BIT,
+                                                  0,
+                                                  sizeof(float) * 4};
 
 ImGuiBackendVulkan::ImGuiBackendVulkan(const std::shared_ptr<luvk::Device>&         Device,
                                        const std::shared_ptr<luvk::DescriptorPool>& Pool,
@@ -129,11 +129,6 @@ ImGuiBackendVulkan::ImGuiBackendVulkan(const std::shared_ptr<luvk::Device>&     
     m_FontTexture = std::make_shared<luvk::Texture>(FontImage, FontSampler);
 
     IO.Fonts->SetTexID(reinterpret_cast<ImTextureID>(m_FontSet->GetHandle()));
-    constexpr VkPushConstantRange PCRange{
-        VK_SHADER_STAGE_VERTEX_BIT,
-        0,
-        sizeof(float) * 4
-    };
 
     m_Pipeline = std::make_shared<luvk::Pipeline>(m_Device);
     m_Pipeline->CreateGraphicsPipeline({.Extent = m_SwapChain->GetExtent(),
@@ -145,7 +140,7 @@ ImGuiBackendVulkan::ImGuiBackendVulkan(const std::shared_ptr<luvk::Device>&     
                                         .SetLayouts = luvk::Array{m_FontSet->GetLayout()},
                                         .Bindings = g_Bindings,
                                         .Attributes = g_Attributes,
-                                        .PushConstants = luvk::Array{PCRange},
+                                        .PushConstants = luvk::Array{g_PushConstantRange},
                                         .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                         .CullMode = VK_CULL_MODE_NONE,
                                         .EnableDepthOp = false});

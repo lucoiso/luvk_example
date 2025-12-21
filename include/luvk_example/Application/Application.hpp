@@ -22,11 +22,11 @@ namespace luvk_example
         std::unique_ptr<Pixel>      m_PixelMesh;
         std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
 
-        Application() = delete;
         explicit Application(std::uint32_t Width, std::uint32_t Height);
         ~Application() override;
 
     public:
+        Application() = delete;
         static Application& GetInstance();
 
         [[nodiscard]] constexpr Camera& GetCamera() noexcept

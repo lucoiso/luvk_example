@@ -17,10 +17,8 @@
 
 using namespace luvk_example;
 
-constexpr std::uint32_t g_ImageCount = 3U;
-
 Application::Application(const std::uint32_t Width, const std::uint32_t Height)
-    : ApplicationBase(Width, Height)
+    : ApplicationBase(Width, Height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE)
 {
     ApplicationBase::Initialize();
 

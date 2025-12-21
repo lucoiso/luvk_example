@@ -27,7 +27,7 @@ constexpr luvk::Renderer::InstanceCreationArguments g_InstArguments{.Application
                                                                     .ApplicationVersion = VK_MAKE_VERSION(0U, 0U, 1U),
                                                                     .EngineVersion = VK_MAKE_VERSION(0U, 0U, 1U)};
 
-ApplicationBase::ApplicationBase(const std::uint32_t Width, const std::uint32_t Height)
+ApplicationBase::ApplicationBase(const std::uint32_t Width, const std::uint32_t Height, const SDL_WindowFlags Flags)
     : m_Width(static_cast<std::int32_t>(Width)),
       m_Height(static_cast<std::int32_t>(Height)),
       m_Renderer(luvk::CreateModule<luvk::Renderer>())
@@ -40,7 +40,7 @@ ApplicationBase::ApplicationBase(const std::uint32_t Width, const std::uint32_t 
     m_Window = SDL_CreateWindow(std::data(m_Title),
                                 m_Width,
                                 m_Height,
-                                SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+                                Flags);
 
     SDL_StartTextInput(m_Window);
 }
@@ -72,6 +72,7 @@ bool ApplicationBase::Initialize()
         volkLoadDevice(m_DeviceModule->GetLogicalDevice());
         luvk::InitializeShaderCompiler();
         m_Renderer->InitializeRenderLoop();
+        m_CanRender = true;
 
         return true;
     }
@@ -106,7 +107,7 @@ bool ApplicationBase::Render()
     }
 
     static auto LastTime    = std::chrono::steady_clock::now();
-    auto        CurrentTime = std::chrono::steady_clock::now();
+    const auto  CurrentTime = std::chrono::steady_clock::now();
 
     const float DeltaTime = std::chrono::duration<float>(CurrentTime - LastTime).count();
     m_DeltaTime           = glm::clamp(DeltaTime, 0.0001f, 0.05f);
@@ -135,14 +136,14 @@ void ApplicationBase::RegisterModules()
     m_ThreadPoolModule      = luvk::CreateModule<luvk::ThreadPool>();
     m_DescriptorPoolModule  = luvk::CreateModule<luvk::DescriptorPool>(m_DeviceModule);
 
-    m_Renderer->RegisterModules({m_DebugModule,
-                                 m_DeviceModule,
-                                 m_MemoryModule,
-                                 m_SwapChainModule,
-                                 m_CommandPoolModule,
-                                 m_SynchronizationModule,
-                                 m_ThreadPoolModule,
-                                 m_DescriptorPoolModule});
+    m_Renderer->RegisterModules({.DebugModule = m_DebugModule,
+                                 .DeviceModule = m_DeviceModule,
+                                 .MemoryModule = m_MemoryModule,
+                                 .SwapChainModule = m_SwapChainModule,
+                                 .CommandPoolModule = m_CommandPoolModule,
+                                 .SynchronizationModule = m_SynchronizationModule,
+                                 .ThreadPoolModule = m_ThreadPoolModule,
+                                 .DescriptorPoolModule = m_DescriptorPoolModule});
 }
 
 void ApplicationBase::SetupExtensions() const

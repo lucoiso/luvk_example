@@ -4,7 +4,6 @@
 
 #include "luvk_example/UserInterface/Backend/ImGuiBackendSDL.hpp"
 #include <imgui.h>
-#include <iostream>
 #include <ostream>
 #include <volk.h>
 #include <SDL3/SDL_mouse.h>

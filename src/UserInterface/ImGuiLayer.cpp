@@ -275,7 +275,7 @@ void ImGuiLayer::DrawTexture() const
     if (const ImVec2 Avail = ImGui::GetContentRegionAvail();
         m_ShaderImage && Avail.x > 0.0f && Avail.y > 0.0f)
     {
-        const VkDescriptorSet DS = m_ShaderImage->GetDescriptorSet();
+        const VkDescriptorSet& DS = m_ShaderImage->GetDescriptorSet();
         if (DS != VK_NULL_HANDLE)
         {
             ImGui::Image(DS, Avail);
