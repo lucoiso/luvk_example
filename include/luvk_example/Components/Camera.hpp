@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <memory>
 #include <glm/glm.hpp>
 
 namespace luvk_example
@@ -12,13 +13,15 @@ namespace luvk_example
 
     class Camera
     {
-        glm::vec3 m_Position{0.F, 0.F, 2.F};
-        float     m_Speed{2.F};
+        glm::vec3                     m_Position{0.F, 0.F, 2.F};
+        float                         m_Speed{2.F};
+        std::shared_ptr<InputManager> m_Manager;
 
     public:
-        constexpr Camera() = default;
+        Camera() = delete;
+        explicit Camera(const std::shared_ptr<InputManager>& Manager);
 
-        void                    Update(float DeltaTime, const InputManager& Input);
+        void                    Update(float DeltaTime);
         [[nodiscard]] glm::mat4 GetViewMatrix() const;
     };
 } // namespace luvk_example

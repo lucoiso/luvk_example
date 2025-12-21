@@ -4,11 +4,13 @@
 
 #pragma once
 
+#include <imgui.h>
 #include <luvk/Types/Array.hpp>
 #include <SDL3/SDL_events.h>
 
 class SDL_Window;
 class SDL_Cursor;
+struct ImGuiViewport;
 
 namespace luvk_example
 {
@@ -24,5 +26,22 @@ namespace luvk_example
 
         void               NewFrame() const;
         [[nodiscard]] bool ProcessEvent(const SDL_Event& Event) const;
+
+    private:
+        void UpdateMonitors() const;
+
+        static void   CreateWindow(ImGuiViewport* Viewport);
+        static void   DestroyWindow(ImGuiViewport* Viewport);
+        static void   ShowWindow(ImGuiViewport* Viewport);
+        static ImVec2 GetWindowPos(ImGuiViewport* Viewport);
+        static void   SetWindowPos(ImGuiViewport* Viewport, ImVec2 Pos);
+        static ImVec2 GetWindowSize(ImGuiViewport* Viewport);
+        static void   SetWindowSize(ImGuiViewport* Viewport, ImVec2 Size);
+        static void   SetWindowTitle(ImGuiViewport* Viewport, const char* Title);
+        static void   SetWindowFocus(ImGuiViewport* Viewport);
+        static bool   GetWindowFocus(ImGuiViewport* Viewport);
+        static bool   GetWindowMinimized(ImGuiViewport* Viewport);
+        static void   SetWindowAlpha(ImGuiViewport* Viewport, float Alpha);
+        static int    CreateVkSurface(ImGuiViewport* Viewport, ImU64 Instance, const void* Allocator, ImU64* OutSurface);
     };
-} // namespace luvk_example
+}

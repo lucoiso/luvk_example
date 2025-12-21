@@ -8,24 +8,27 @@
 
 using namespace luvk_example;
 
-void Camera::Update(const float DeltaTime, const InputManager& Input)
+Camera::Camera(const std::shared_ptr<InputManager>& Manager)
+    : m_Manager(Manager) {}
+
+void Camera::Update(const float DeltaTime)
 {
-    if (Input.IsKeyPressed(SDLK_LEFT))
+    if (m_Manager->IsKeyPressed(SDLK_LEFT))
     {
         m_Position.x -= m_Speed * DeltaTime;
     }
 
-    if (Input.IsKeyPressed(SDLK_RIGHT))
+    if (m_Manager->IsKeyPressed(SDLK_RIGHT))
     {
         m_Position.x += m_Speed * DeltaTime;
     }
 
-    if (Input.IsKeyPressed(SDLK_UP))
+    if (m_Manager->IsKeyPressed(SDLK_UP))
     {
         m_Position.y += m_Speed * DeltaTime;
     }
 
-    if (Input.IsKeyPressed(SDLK_DOWN))
+    if (m_Manager->IsKeyPressed(SDLK_DOWN))
     {
         m_Position.y -= m_Speed * DeltaTime;
     }

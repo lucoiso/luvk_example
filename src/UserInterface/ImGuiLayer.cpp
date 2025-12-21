@@ -125,18 +125,19 @@ float4 main(VSOutput input) : SV_Target
 )";
 
 ImGuiLayer::ImGuiLayer(SDL_Window*                                  Window,
+                       const VkInstance&                            Instance,
                        std::shared_ptr<luvk::Device> const&         Device,
                        std::shared_ptr<luvk::DescriptorPool> const& Pool,
                        std::shared_ptr<luvk::SwapChain> const&      Swap,
                        std::shared_ptr<luvk::Memory> const&         Memory)
     : ImGuiLayerBase(Window,
+                     Instance,
                      Device,
                      Pool,
                      Swap,
                      Memory)
 {
     InitializeResources(Device, Pool, Memory);
-    m_VulkanBackend = std::make_unique<ImGuiBackendVulkan>(Device, Pool, Swap, Memory);
 }
 
 ImGuiLayer::~ImGuiLayer()

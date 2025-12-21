@@ -37,8 +37,8 @@ namespace luvk_example
 
         float m_DeltaTime{0.f};
 
-        InputManager m_Input;
-        SDL_Window*  m_Window{};
+        SDL_Window*                   m_Window{};
+        std::shared_ptr<InputManager> m_Input;
 
         std::shared_ptr<luvk::Renderer>        m_Renderer{};
         std::shared_ptr<luvk::Debug>           m_DebugModule{};
@@ -79,7 +79,7 @@ namespace luvk_example
             return m_DeltaTime;
         }
 
-        [[nodiscard]] constexpr InputManager& GetInput() noexcept
+        [[nodiscard]] std::shared_ptr<InputManager> GetInput() const noexcept
         {
             return m_Input;
         }

@@ -42,6 +42,8 @@ ApplicationBase::ApplicationBase(const std::uint32_t Width, const std::uint32_t 
                                 m_Height,
                                 Flags);
 
+    m_Input = std::make_shared<InputManager>(m_Window);
+
     SDL_StartTextInput(m_Window);
 }
 
@@ -82,8 +84,8 @@ bool ApplicationBase::Initialize()
 
 bool ApplicationBase::Render()
 {
-    m_Input.ProcessEvents();
-    if (!m_Input.Running())
+    m_Input->ProcessEvents();
+    if (!m_Input->Running())
     {
         return false;
     }
@@ -175,7 +177,8 @@ bool ApplicationBase::InitializeModules() const
     m_MemoryModule->InitializeAllocator(0);
 
     m_SwapChainModule->CreateSwapChain({.PresentMode = VK_PRESENT_MODE_FIFO_KHR,
-                                        .Extent = {GetWidth(), GetHeight()}},
+                                        .Extent = {GetWidth(), GetHeight()},
+                                        .Surface = m_DeviceModule->GetSurface()},
                                        nullptr);
 
     m_CommandPoolModule->CreateCommandPool(m_DeviceModule->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value(),

@@ -10,6 +10,7 @@
 #include <luvk/Modules/Synchronization.hpp>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_vulkan.h>
+#include "luvk_example/Components/Camera.hpp"
 #include "luvk_example/Meshes/Cube.hpp"
 #include "luvk_example/Meshes/Pixel.hpp"
 #include "luvk_example/Meshes/Triangle.hpp"
@@ -18,13 +19,13 @@
 using namespace luvk_example;
 
 Application::Application(const std::uint32_t Width, const std::uint32_t Height)
-    : ApplicationBase(Width, Height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE)
+    : ApplicationBase(Width, Height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE),
+      m_Camera(std::make_shared<Camera>(m_Input))
 {
     ApplicationBase::Initialize();
 
-    const std::string InitTitle = m_Title;
-
     m_ImGuiLayer = std::make_unique<ImGuiLayer>(m_Window,
+                                                m_Renderer->GetInstance(),
                                                 m_DeviceModule,
                                                 m_DescriptorPoolModule,
                                                 m_SwapChainModule,
@@ -33,6 +34,7 @@ Application::Application(const std::uint32_t Width, const std::uint32_t Height)
     CreateScene();
     RegisterInputBindings();
 
+    const std::string InitTitle = m_Title;
     m_Renderer->SetPreRenderCallback([this, InitTitle](const VkCommandBuffer& Cmd)
     {
         {
@@ -56,7 +58,7 @@ Application::Application(const std::uint32_t Width, const std::uint32_t Height)
 
         if (!ImGui::GetIO().WantCaptureMouse)
         {
-            m_Camera.Update(m_DeltaTime, m_Input);
+            m_Camera->Update(m_DeltaTime);
         }
 
         m_CubeMesh->Tick(m_DeltaTime);
@@ -105,61 +107,61 @@ void Application::CreateScene()
 
 void Application::RegisterInputBindings()
 {
-    m_Input.BindEvent(SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED,
-                      [&]([[maybe_unused]] const SDL_Event& Event)
-                      {
-                          m_ResizePending = true;
-                      });
+    m_Input->BindEvent(SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED,
+                       [&]([[maybe_unused]] const SDL_Event& Event)
+                       {
+                           m_ResizePending = true;
+                       });
 
-    m_Input.BindEvent(SDL_EVENT_WINDOW_MINIMIZED,
-                      [&]([[maybe_unused]] const SDL_Event& Event)
-                      {
-                          m_Renderer->SetPaused(true);
-                          m_CanRender = false;
-                      });
+    m_Input->BindEvent(SDL_EVENT_WINDOW_MINIMIZED,
+                       [&]([[maybe_unused]] const SDL_Event& Event)
+                       {
+                           m_Renderer->SetPaused(true);
+                           m_CanRender = false;
+                       });
 
-    m_Input.BindEvent(SDL_EVENT_WINDOW_RESTORED,
-                      [&]([[maybe_unused]] const SDL_Event& Event)
-                      {
-                          m_Renderer->SetPaused(false);
-                          m_CanRender = true;
-                      });
+    m_Input->BindEvent(SDL_EVENT_WINDOW_RESTORED,
+                       [&]([[maybe_unused]] const SDL_Event& Event)
+                       {
+                           m_Renderer->SetPaused(false);
+                           m_CanRender = true;
+                       });
 
-    m_Input.BindEvent(SDL_EVENT_MOUSE_BUTTON_DOWN,
-                      [&](const SDL_Event& Event)
-                      {
-                          if (Event.button.button == SDL_BUTTON_RIGHT && !ImGui::GetIO().WantCaptureMouse)
-                          {
-                              std::int32_t NewW = 0;
-                              std::int32_t NewH = 0;
-                              SDL_GetWindowSizeInPixels(m_Window, &NewW, &NewH);
+    m_Input->BindEvent(SDL_EVENT_MOUSE_BUTTON_DOWN,
+                       [&](const SDL_Event& Event)
+                       {
+                           if (Event.button.button == SDL_BUTTON_RIGHT && !ImGui::GetIO().WantCaptureMouse)
+                           {
+                               std::int32_t NewW = 0;
+                               std::int32_t NewH = 0;
+                               SDL_GetWindowSizeInPixels(m_Window, &NewW, &NewH);
 
-                              const glm::vec2 Position{2.F * Event.button.x / static_cast<float>(NewW) - 1.F,
-                                                       2.F * Event.button.y / static_cast<float>(NewH) - 1.F};
+                               const glm::vec2 Position{2.F * Event.button.x / static_cast<float>(NewW) - 1.F,
+                                                        2.F * Event.button.y / static_cast<float>(NewH) - 1.F};
 
-                              m_TriangleMesh->AddInstance(Position);
-                          }
-                      });
+                               m_TriangleMesh->AddInstance(Position);
+                           }
+                       });
 
-    m_Input.BindEvent(SDL_EVENT_MOUSE_MOTION,
-                      [&](const SDL_Event& Event)
-                      {
-                          if (m_Input.LeftHeld() && !ImGui::GetIO().WantCaptureMouse)
-                          {
-                              std::int32_t NewW = 0;
-                              std::int32_t NewH = 0;
-                              SDL_GetWindowSizeInPixels(m_Window, &NewW, &NewH);
+    m_Input->BindEvent(SDL_EVENT_MOUSE_MOTION,
+                       [&](const SDL_Event& Event)
+                       {
+                           if (m_Input->LeftHeld() && !ImGui::GetIO().WantCaptureMouse)
+                           {
+                               std::int32_t NewW = 0;
+                               std::int32_t NewH = 0;
+                               SDL_GetWindowSizeInPixels(m_Window, &NewW, &NewH);
 
-                              const glm::vec2 Position{2.F * Event.motion.x / static_cast<float>(NewW) - 1.F,
-                                                       2.F * Event.motion.y / static_cast<float>(NewH) - 1.F};
+                               const glm::vec2 Position{2.F * Event.motion.x / static_cast<float>(NewW) - 1.F,
+                                                        2.F * Event.motion.y / static_cast<float>(NewH) - 1.F};
 
-                              m_PixelMesh->AddInstance(Position);
-                          }
-                      });
+                               m_PixelMesh->AddInstance(Position);
+                           }
+                       });
 
-    m_Input.BindEvent(SDL_EVENT_USER,
-                      [&](const SDL_Event& Event)
-                      {
-                          [[maybe_unused]] auto _ = m_ImGuiLayer && m_ImGuiLayer->ProcessEvent(Event);
-                      });
+    m_Input->BindEvent(SDL_EVENT_USER,
+                       [&](const SDL_Event& Event)
+                       {
+                           [[maybe_unused]] auto _ = m_ImGuiLayer && m_ImGuiLayer->ProcessEvent(Event);
+                       });
 }

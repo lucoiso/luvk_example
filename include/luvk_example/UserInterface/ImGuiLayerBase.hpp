@@ -32,6 +32,7 @@ namespace luvk_example
     public:
         ImGuiLayerBase() = delete;
         explicit ImGuiLayerBase(SDL_Window*                                  Window,
+                                const VkInstance&                            Instance,
                                 std::shared_ptr<luvk::Device> const&         Device,
                                 std::shared_ptr<luvk::DescriptorPool> const& Pool,
                                 std::shared_ptr<luvk::SwapChain> const&      Swap,

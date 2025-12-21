@@ -7,6 +7,9 @@
 
 using namespace luvk_example;
 
+InputManager::InputManager(SDL_Window* MainWindow)
+    : m_MainWindow(MainWindow) {}
+
 void InputManager::BindEvent(const std::uint32_t                     Type,
                              std::function<void(const SDL_Event&)>&& Callback)
 {
@@ -25,6 +28,14 @@ void InputManager::ProcessEvents()
         case SDL_EVENT_QUIT:
             {
                 m_Running = false;
+                break;
+            }
+        case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+            {
+                if (Event.window.windowID == SDL_GetWindowID(m_MainWindow))
+                {
+                    m_Running = false;
+                }
                 break;
             }
         case SDL_EVENT_KEY_DOWN:

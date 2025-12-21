@@ -10,6 +10,7 @@
 #include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Types/Material.hpp>
 #include "luvk_example/Application/Application.hpp"
+#include "luvk_example/Components/Camera.hpp"
 
 using namespace luvk_example;
 
@@ -177,7 +178,7 @@ void Cube::Tick(const float DeltaTime)
     Elapsed                        += DeltaTime;
 
     const glm::mat4 Model = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));
-    m_Mvp                 = Proj * AppInstance.GetCamera().GetViewMatrix() * Model;
+    m_Mvp                 = Proj * AppInstance.GetCamera()->GetViewMatrix() * Model;
 
     SetPushConstantData(std::as_bytes(std::span{&m_Mvp, 1}));
 }

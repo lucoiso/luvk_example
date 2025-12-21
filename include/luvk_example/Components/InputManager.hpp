@@ -16,6 +16,7 @@ namespace luvk_example
     {
         using EventCallbacks = luvk::Vector<std::function<void(const SDL_Event&)>>;
 
+        SDL_Window*                                       m_MainWindow{nullptr};
         std::unordered_map<std::uint32_t, EventCallbacks> m_Bindings{};
         std::unordered_set<std::uint32_t>                 m_PressedKeys{};
         bool                                              m_Running{true};
@@ -23,7 +24,8 @@ namespace luvk_example
         bool                                              m_RightHeld{false};
 
     public:
-        InputManager()  = default;
+        InputManager() = delete;
+        explicit InputManager(SDL_Window* MainWindow);
         ~InputManager() = default;
 
         void BindEvent(std::uint32_t Type, std::function<void(const SDL_Event&)>&& Callback);

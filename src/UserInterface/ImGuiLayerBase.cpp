@@ -8,6 +8,7 @@
 using namespace luvk_example;
 
 ImGuiLayerBase::ImGuiLayerBase(SDL_Window*                                  Window,
+                               const VkInstance&                            Instance,
                                std::shared_ptr<luvk::Device> const&         Device,
                                std::shared_ptr<luvk::DescriptorPool> const& Pool,
                                std::shared_ptr<luvk::SwapChain> const&      Swap,
@@ -17,16 +18,18 @@ ImGuiLayerBase::ImGuiLayerBase(SDL_Window*                                  Wind
     ImGui::CreateContext();
 
     ImGuiIO& IO    = ImGui::GetIO();
-    IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_NavEnableKeyboard;
+    IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_NavEnableKeyboard;
 
     ImGuiLayerBase::PushStyle();
 
     m_SdlBackend    = std::make_unique<ImGuiBackendSDL>(Window);
-    m_VulkanBackend = std::make_unique<ImGuiBackendVulkan>(Device, Pool, Swap, Memory);
+    m_VulkanBackend = std::make_unique<ImGuiBackendVulkan>(Instance, Device, Pool, Swap, Memory);
 }
 
 ImGuiLayerBase::~ImGuiLayerBase()
 {
+    ImGui::DestroyPlatformWindows();
+
     m_VulkanBackend.reset();
     m_SdlBackend.reset();
 
@@ -42,6 +45,12 @@ void ImGuiLayerBase::Draw()
 void ImGuiLayerBase::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFrame) const
 {
     m_VulkanBackend->Render(Cmd, CurrentFrame);
+
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+    }
 }
 
 bool ImGuiLayerBase::ProcessEvent(const SDL_Event& Event) const

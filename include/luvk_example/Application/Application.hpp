@@ -5,10 +5,10 @@
 #pragma once
 
 #include "luvk_example/Application/ApplicationBase.hpp"
-#include "luvk_example/Components/Camera.hpp"
 
 namespace luvk_example
 {
+    class Camera;
     class Cube;
     class Triangle;
     class Pixel;
@@ -16,7 +16,7 @@ namespace luvk_example
 
     class Application : public ApplicationBase
     {
-        Camera                      m_Camera;
+        std::shared_ptr<Camera>     m_Camera;
         std::unique_ptr<Cube>       m_CubeMesh;
         std::unique_ptr<Triangle>   m_TriangleMesh;
         std::unique_ptr<Pixel>      m_PixelMesh;
@@ -29,7 +29,7 @@ namespace luvk_example
         Application() = delete;
         static Application& GetInstance();
 
-        [[nodiscard]] constexpr Camera& GetCamera() noexcept
+        [[nodiscard]] std::shared_ptr<Camera> GetCamera() const noexcept
         {
             return m_Camera;
         }
