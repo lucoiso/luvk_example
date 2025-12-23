@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include <array>
 #include <imgui.h>
-#include <luvk/Types/Array.hpp>
 #include <SDL3/SDL_events.h>
 
 class SDL_Window;
@@ -16,8 +16,8 @@ namespace luvk_example
 {
     class ImGuiBackendSDL
     {
-        SDL_Window*                  m_Window{};
-        luvk::Array<SDL_Cursor*, 11> m_MouseCursors{};
+        SDL_Window*                 m_Window{};
+        std::array<SDL_Cursor*, 11> m_MouseCursors{};
 
     public:
         ImGuiBackendSDL() = delete;

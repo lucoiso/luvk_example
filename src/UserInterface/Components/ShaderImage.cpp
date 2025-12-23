@@ -3,13 +3,13 @@
 // Repo: https://github.com/lucoiso/luvk_example
 
 #include "luvk_example/UserInterface/Components/ShaderImage.hpp"
+#include <array>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Resources/DescriptorSet.hpp>
 #include <luvk/Resources/Image.hpp>
 #include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Resources/Sampler.hpp>
-#include <luvk/Types/Array.hpp>
 #include <luvk/Types/Texture.hpp>
 
 using namespace luvk_example;
@@ -154,7 +154,7 @@ ShaderImage::~ShaderImage()
 {
     if (m_Device)
     {
-        const VkDevice& LogicalDevice = m_Device->GetLogicalDevice();
+        const VkDevice LogicalDevice = m_Device->GetLogicalDevice();
         if (m_Framebuffer != VK_NULL_HANDLE)
         {
             vkDestroyFramebuffer(LogicalDevice, m_Framebuffer, nullptr);
@@ -166,7 +166,7 @@ ShaderImage::~ShaderImage()
     }
 }
 
-void ShaderImage::Update(const VkCommandBuffer& Cmd, const float DeltaTime)
+void ShaderImage::Update(const VkCommandBuffer Cmd, const float DeltaTime)
 {
     if (!m_Pipeline || !m_Texture)
     {
@@ -297,7 +297,7 @@ void ShaderImage::Initialize()
                                                    VK_SHADER_STAGE_FRAGMENT_BIT,
                                                    nullptr};
 
-    m_DescriptorSet->CreateLayout({.Bindings = luvk::Array{Binding}});
+    m_DescriptorSet->CreateLayout({.Bindings = std::array{Binding}});
     m_DescriptorSet->Allocate();
 
     m_DescriptorSet->UpdateImage(m_Texture->GetImage()->GetView(),
@@ -320,20 +320,20 @@ void ShaderImage::Initialize()
                                        .colorAttachmentCount = 1,
                                        .pColorAttachments = &Ref};
 
-    constexpr luvk::Array Dependencies{VkSubpassDependency{.srcSubpass = VK_SUBPASS_EXTERNAL,
-                                                           .dstSubpass = 0,
-                                                           .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                           .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                           .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                           .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                           .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT},
-                                       VkSubpassDependency{.srcSubpass = 0,
-                                                           .dstSubpass = VK_SUBPASS_EXTERNAL,
-                                                           .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                           .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                           .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                           .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                           .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT}};
+    constexpr std::array Dependencies{VkSubpassDependency{.srcSubpass = VK_SUBPASS_EXTERNAL,
+                                                          .dstSubpass = 0,
+                                                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                          .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT},
+                                      VkSubpassDependency{.srcSubpass = 0,
+                                                          .dstSubpass = VK_SUBPASS_EXTERNAL,
+                                                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                                          .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT}};
 
     const VkRenderPassCreateInfo RPInfo{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
                                         .attachmentCount = 1,
@@ -345,7 +345,7 @@ void ShaderImage::Initialize()
 
     vkCreateRenderPass(m_Device->GetLogicalDevice(), &RPInfo, nullptr, &m_RenderPass);
 
-    const VkImageView&            View = m_Texture->GetImage()->GetView();
+    const VkImageView             View = m_Texture->GetImage()->GetView();
     const VkFramebufferCreateInfo FBInfo{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                                          .renderPass = m_RenderPass,
                                          .attachmentCount = 1,
@@ -359,7 +359,7 @@ void ShaderImage::Initialize()
     Reset();
 }
 
-void ShaderImage::CreatePipeline(const luvk::Vector<std::uint32_t>& FragSpirv)
+void ShaderImage::CreatePipeline(const std::vector<std::uint32_t>& FragSpirv)
 {
     if (m_Pipeline)
     {
@@ -367,8 +367,8 @@ void ShaderImage::CreatePipeline(const luvk::Vector<std::uint32_t>& FragSpirv)
         m_Pipeline.reset();
     }
 
-    m_Pipeline                         = std::make_shared<luvk::Pipeline>(m_Device);
-    constexpr luvk::Array ColorFormats = {VK_FORMAT_R8G8B8A8_UNORM};
+    m_Pipeline                        = std::make_shared<luvk::Pipeline>(m_Device);
+    constexpr std::array ColorFormats = {VK_FORMAT_R8G8B8A8_UNORM};
 
     constexpr VkPushConstantRange PCRange{.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
                                           .offset = 0,
@@ -380,7 +380,7 @@ void ShaderImage::CreatePipeline(const luvk::Vector<std::uint32_t>& FragSpirv)
                                         .Subpass = 0,
                                         .VertexShader = m_CachedVertexShader,
                                         .FragmentShader = FragSpirv,
-                                        .PushConstants = luvk::Array{PCRange},
+                                        .PushConstants = std::array{PCRange},
                                         .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
                                         .CullMode = VK_CULL_MODE_NONE,
                                         .EnableDepthOp = false});
@@ -391,9 +391,9 @@ void ShaderImage::TransitionLayout() const
     constexpr VkImageLayout FromLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     constexpr VkImageLayout ToLayout   = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    const VkDevice&     LogicalDevice = m_Device->GetLogicalDevice();
+    const VkDevice      LogicalDevice = m_Device->GetLogicalDevice();
     const std::uint32_t QueueFamily   = m_Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
-    const VkQueue&      Queue         = m_Device->GetQueue(QueueFamily);
+    const VkQueue       Queue         = m_Device->GetQueue(QueueFamily);
 
     const VkCommandPoolCreateInfo PoolInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                            .pNext = nullptr,

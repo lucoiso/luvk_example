@@ -7,7 +7,6 @@
 #include <imgui_internal.h>
 #include <luvk/Modules/Device.hpp>
 #include "luvk_example/Application/Application.hpp"
-#include "luvk_example/UserInterface/Components/ShaderImage.hpp"
 
 using namespace luvk_example;
 
@@ -125,7 +124,7 @@ float4 main(VSOutput input) : SV_Target
 )";
 
 ImGuiLayer::ImGuiLayer(SDL_Window*                                  Window,
-                       const VkInstance&                            Instance,
+                       const VkInstance                             Instance,
                        std::shared_ptr<luvk::Device> const&         Device,
                        std::shared_ptr<luvk::DescriptorPool> const& Pool,
                        std::shared_ptr<luvk::SwapChain> const&      Swap,
@@ -154,7 +153,7 @@ void ImGuiLayer::Draw()
     DrawTexture();
 }
 
-void ImGuiLayer::UpdatePreview(const VkCommandBuffer& Cmd)
+void ImGuiLayer::UpdatePreview(const VkCommandBuffer Cmd)
 {
     m_ShaderImage->Update(Cmd, Application::GetInstance().GetDeltaTime());
 }
@@ -276,7 +275,7 @@ void ImGuiLayer::DrawTexture() const
     if (const ImVec2 Avail = ImGui::GetContentRegionAvail();
         m_ShaderImage && Avail.x > 0.0f && Avail.y > 0.0f)
     {
-        const VkDescriptorSet& DS = m_ShaderImage->GetDescriptorSet();
+        const VkDescriptorSet DS = m_ShaderImage->GetDescriptorSet();
         if (DS != VK_NULL_HANDLE)
         {
             ImGui::Image(DS, Avail);

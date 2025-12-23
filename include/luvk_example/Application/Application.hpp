@@ -16,11 +16,11 @@ namespace luvk_example
 
     class Application : public ApplicationBase
     {
-        std::shared_ptr<Camera>     m_Camera;
         std::unique_ptr<Cube>       m_CubeMesh;
         std::unique_ptr<Triangle>   m_TriangleMesh;
         std::unique_ptr<Pixel>      m_PixelMesh;
         std::unique_ptr<ImGuiLayer> m_ImGuiLayer;
+        std::shared_ptr<Camera>     m_Camera;
 
         explicit Application(std::uint32_t Width, std::uint32_t Height);
         ~Application() override;

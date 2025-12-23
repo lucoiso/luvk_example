@@ -150,14 +150,14 @@ Cube::Cube(const std::shared_ptr<luvk::Device>&         Device,
     Set->Allocate();
 
     m_Pipeline->CreateMeshPipeline({.Extent = Swap->GetExtent(),
-                                    .ColorFormats = luvk::Array{Swap->GetCreationArguments().Format},
+                                    .ColorFormats = std::array{Swap->GetCreationArguments().Format},
                                     .RenderPass = Swap->GetRenderPass(),
                                     .Subpass = 0,
                                     .TaskShader = luvk::CompileShader(g_TaskShader),
                                     .MeshShader = luvk::CompileShader(g_MeshShader),
                                     .FragmentShader = luvk::CompileShader(g_FragmentShader),
-                                    .SetLayouts = luvk::Array{Set->GetLayout()},
-                                    .PushConstants = luvk::Array{g_PushConstantRange},
+                                    .SetLayouts = std::array{Set->GetLayout()},
+                                    .PushConstants = std::array{g_PushConstantRange},
                                     .CullMode = VK_CULL_MODE_NONE});
 
     m_Material = std::make_shared<luvk::Material>();

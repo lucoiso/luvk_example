@@ -7,7 +7,6 @@
 #include <memory>
 #include <glm/glm.hpp>
 #include <luvk/Types/Mesh.hpp>
-#include <luvk/Types/Vector.hpp>
 
 namespace luvk
 {
@@ -36,7 +35,7 @@ namespace luvk_example
         std::shared_ptr<luvk::Buffer>   m_ParticleBuffer{};
         std::shared_ptr<luvk::Material> m_GraphicsMat{};
         std::shared_ptr<luvk::Material> m_ComputeMat{};
-        luvk::Vector<Particle>          m_Particles{};
+        std::vector<Particle>           m_Particles{};
 
     public:
         Triangle(const std::shared_ptr<luvk::Device>&         Device,
@@ -46,9 +45,9 @@ namespace luvk_example
 
         void AddInstance(glm::vec2 const& Position);
 
-        void Compute(const VkCommandBuffer& Cmd) const;
+        void Compute(VkCommandBuffer Cmd) const;
 
         void Tick(float DeltaTime) override;
-        void Render(const VkCommandBuffer& Cmd, std::uint32_t CurrentFrame) const override;
+        void Render(VkCommandBuffer Cmd, std::uint32_t CurrentFrame) const override;
     };
 }

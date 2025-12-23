@@ -32,7 +32,7 @@ namespace luvk_example
     public:
         ImGuiLayerBase() = delete;
         explicit ImGuiLayerBase(SDL_Window*                                  Window,
-                                const VkInstance&                            Instance,
+                                VkInstance                                   Instance,
                                 std::shared_ptr<luvk::Device> const&         Device,
                                 std::shared_ptr<luvk::DescriptorPool> const& Pool,
                                 std::shared_ptr<luvk::SwapChain> const&      Swap,
@@ -40,7 +40,7 @@ namespace luvk_example
         virtual ~ImGuiLayerBase();
 
         virtual void Draw();
-        void         Render(const VkCommandBuffer& Cmd, std::uint32_t CurrentFrame) const;
+        void         Render(const VkCommandBuffer Cmd, std::uint32_t CurrentFrame) const;
 
         [[nodiscard]] bool ProcessEvent(const SDL_Event& Event) const;
 

@@ -6,7 +6,6 @@
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Resources/Pipeline.hpp>
-#include <luvk/Types/Array.hpp>
 #include <luvk/Types/Material.hpp>
 
 using namespace luvk_example;
@@ -40,20 +39,20 @@ float4 main(float4 vColor : COLOR) : SV_Target
 }
 )";
 
-constexpr luvk::Array<glm::vec2, 4> g_PixVertices{{glm::vec2{-0.01f, 0.01f},
-                                                   glm::vec2{0.01f, 0.01f},
-                                                   glm::vec2{-0.01f, -0.01f},
-                                                   glm::vec2{0.01f, -0.01f}}};
+constexpr std::array<glm::vec2, 4> g_PixVertices{{glm::vec2{-0.01f, 0.01f},
+                                                  glm::vec2{0.01f, 0.01f},
+                                                  glm::vec2{-0.01f, -0.01f},
+                                                  glm::vec2{0.01f, -0.01f}}};
 
-constexpr luvk::Array<std::uint16_t, 6> g_PixIndices{{0, 2, 1, 2, 3, 1}};
+constexpr std::array<std::uint16_t, 6> g_PixIndices{{0, 2, 1, 2, 3, 1}};
 
-constexpr luvk::Array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
-                                 VkVertexInputBindingDescription{1, sizeof(luvk::Mesh::InstanceInfo), VK_VERTEX_INPUT_RATE_INSTANCE}};
+constexpr std::array g_Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
+                                VkVertexInputBindingDescription{1, sizeof(luvk::Mesh::InstanceInfo), VK_VERTEX_INPUT_RATE_INSTANCE}};
 
-constexpr luvk::Array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
-                                   VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Position)},
-                                   VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Rotation) + sizeof(float) * 2},
-                                   VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, Color)}};
+constexpr std::array g_Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+                                  VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Position)},
+                                  VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Rotation) + sizeof(float) * 2},
+                                  VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, Color)}};
 
 Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
              const std::shared_ptr<luvk::SwapChain>& Swap,
@@ -63,7 +62,7 @@ Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
     const auto Pipeline = std::make_shared<luvk::Pipeline>(Device);
 
     Pipeline->CreateGraphicsPipeline({.Extent = Swap->GetExtent(),
-                                      .ColorFormats = luvk::Array{Swap->GetCreationArguments().Format},
+                                      .ColorFormats = std::array{Swap->GetCreationArguments().Format},
                                       .RenderPass = Swap->GetRenderPass(),
                                       .VertexShader = luvk::CompileShader(g_VertexShader),
                                       .FragmentShader = luvk::CompileShader(g_FragmentShader),
@@ -91,7 +90,7 @@ void Pixel::AddInstance(const glm::vec2& Position)
     m_LocalInstances.push_back(Inst);
 }
 
-void Pixel::Render(const VkCommandBuffer& CommandBuffer, const std::uint32_t CurrentFrame) const
+void Pixel::Render(const VkCommandBuffer CommandBuffer, const std::uint32_t CurrentFrame) const
 {
     auto& Self = const_cast<Pixel&>(*this);
     if (!m_LocalInstances.empty())

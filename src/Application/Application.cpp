@@ -10,6 +10,7 @@
 #include <luvk/Modules/Synchronization.hpp>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_vulkan.h>
+#include "luvk/Modules/Draw.hpp"
 #include "luvk_example/Components/Camera.hpp"
 #include "luvk_example/Meshes/Cube.hpp"
 #include "luvk_example/Meshes/Pixel.hpp"
@@ -22,7 +23,10 @@ Application::Application(const std::uint32_t Width, const std::uint32_t Height)
     : ApplicationBase(Width, Height, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE),
       m_Camera(std::make_shared<Camera>(m_Input))
 {
-    ApplicationBase::Initialize();
+    if (!ApplicationBase::Initialize())
+    {
+        return;
+    }
 
     m_ImGuiLayer = std::make_unique<ImGuiLayer>(m_Window,
                                                 m_Renderer->GetInstance(),
@@ -35,7 +39,7 @@ Application::Application(const std::uint32_t Width, const std::uint32_t Height)
     RegisterInputBindings();
 
     const std::string InitTitle = m_Title;
-    m_Renderer->SetPreRenderCallback([this, InitTitle](const VkCommandBuffer& Cmd)
+    m_DrawModule->SetPreRenderCallback([this, InitTitle](const VkCommandBuffer Cmd)
     {
         {
             static float        Interval   = 0.f;
@@ -71,7 +75,7 @@ Application::Application(const std::uint32_t Width, const std::uint32_t Height)
         m_TriangleMesh->Compute(Cmd);
     });
 
-    m_Renderer->SetDrawCallback([this](const VkCommandBuffer& Cmd)
+    m_DrawModule->SetDrawCallback([this](const VkCommandBuffer Cmd)
     {
         const auto FrameIndex = static_cast<std::uint32_t>(m_SynchronizationModule->GetCurrentFrame());
         m_CubeMesh->Render(Cmd, FrameIndex);

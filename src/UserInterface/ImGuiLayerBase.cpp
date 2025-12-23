@@ -8,7 +8,7 @@
 using namespace luvk_example;
 
 ImGuiLayerBase::ImGuiLayerBase(SDL_Window*                                  Window,
-                               const VkInstance&                            Instance,
+                               const VkInstance                             Instance,
                                std::shared_ptr<luvk::Device> const&         Device,
                                std::shared_ptr<luvk::DescriptorPool> const& Pool,
                                std::shared_ptr<luvk::SwapChain> const&      Swap,
@@ -42,7 +42,7 @@ void ImGuiLayerBase::Draw()
     m_VulkanBackend->NewFrame();
 }
 
-void ImGuiLayerBase::Render(const VkCommandBuffer& Cmd, const std::uint32_t CurrentFrame) const
+void ImGuiLayerBase::Render(const VkCommandBuffer Cmd, const std::uint32_t CurrentFrame) const
 {
     m_VulkanBackend->Render(Cmd, CurrentFrame);
 

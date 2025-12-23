@@ -5,23 +5,22 @@
 #pragma once
 
 #include <functional>
-#include <unordered_map>
 #include <unordered_set>
-#include <luvk/Types/Vector.hpp>
 #include <SDL3/SDL_events.h>
 
 namespace luvk_example
 {
     class InputManager
     {
-        using EventCallbacks = luvk::Vector<std::function<void(const SDL_Event&)>>;
+        using EventCallbacks = std::vector<std::function<void(const SDL_Event&)>>;
+
+        bool m_Running{true};
+        bool m_LeftHeld{false};
+        bool m_RightHeld{false};
 
         SDL_Window*                                       m_MainWindow{nullptr};
         std::unordered_map<std::uint32_t, EventCallbacks> m_Bindings{};
         std::unordered_set<std::uint32_t>                 m_PressedKeys{};
-        bool                                              m_Running{true};
-        bool                                              m_LeftHeld{false};
-        bool                                              m_RightHeld{false};
 
     public:
         InputManager() = delete;

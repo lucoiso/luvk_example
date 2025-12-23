@@ -6,8 +6,8 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 #include <volk.h>
-#include <luvk/Types/Vector.hpp>
 
 namespace luvk
 {
@@ -23,9 +23,10 @@ namespace luvk_example
 {
     class ShaderImage
     {
-        float                                m_TotalTime{0.0f};
-        VkRenderPass                         m_RenderPass{VK_NULL_HANDLE};
-        VkFramebuffer                        m_Framebuffer{VK_NULL_HANDLE};
+        float         m_TotalTime{0.0f};
+        VkRenderPass  m_RenderPass{VK_NULL_HANDLE};
+        VkFramebuffer m_Framebuffer{VK_NULL_HANDLE};
+
         std::shared_ptr<luvk::Texture>       m_Texture{};
         std::shared_ptr<luvk::Pipeline>      m_Pipeline{};
         std::shared_ptr<luvk::DescriptorSet> m_DescriptorSet{};
@@ -34,7 +35,7 @@ namespace luvk_example
         std::shared_ptr<luvk::DescriptorPool> m_Pool;
         std::shared_ptr<luvk::Memory>         m_Memory;
 
-        luvk::Vector<std::uint32_t> m_CachedVertexShader{};
+        std::vector<std::uint32_t> m_CachedVertexShader{};
 
     public:
         ShaderImage(std::shared_ptr<luvk::Device>         Device,
@@ -42,7 +43,7 @@ namespace luvk_example
                     std::shared_ptr<luvk::Memory>         Memory);
         ~ShaderImage();
 
-        void Update(const VkCommandBuffer& Cmd, float DeltaTime);
+        void Update(const VkCommandBuffer Cmd, float DeltaTime);
 
         [[nodiscard]] bool Compile(const std::string& Source, std::string& OutError);
         void               Reset();
@@ -51,7 +52,7 @@ namespace luvk_example
 
     private:
         void Initialize();
-        void CreatePipeline(const luvk::Vector<std::uint32_t>& FragSpirv);
+        void CreatePipeline(const std::vector<std::uint32_t>& FragSpirv);
         void TransitionLayout() const;
     };
 }

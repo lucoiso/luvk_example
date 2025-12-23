@@ -13,8 +13,8 @@ namespace luvk_example
 
     class Camera
     {
-        glm::vec3                     m_Position{0.F, 0.F, 2.F};
         float                         m_Speed{2.F};
+        glm::vec3                     m_Position{0.F, 0.F, 2.F};
         std::shared_ptr<InputManager> m_Manager;
 
     public:

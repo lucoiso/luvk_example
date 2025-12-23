@@ -6,8 +6,8 @@
 
 #include <string>
 #include <volk.h>
-#include <luvk/Types/Vector.hpp>
 #include "luvk_example/UserInterface/ImGuiLayerBase.hpp"
+#include "luvk_example/UserInterface/Components/ShaderImage.hpp"
 
 struct ImGuiInputTextCallbackData;
 
@@ -18,8 +18,6 @@ namespace luvk
 
 namespace luvk_example
 {
-    class ShaderImage;
-
     class ImGuiLayer : public ImGuiLayerBase
     {
         bool        m_CompileSuccess{true};
@@ -30,7 +28,7 @@ namespace luvk_example
 
     public:
         explicit ImGuiLayer(SDL_Window*                                  Window,
-                            const VkInstance&                            Instance,
+                            VkInstance                                   Instance,
                             std::shared_ptr<luvk::Device> const&         Device,
                             std::shared_ptr<luvk::DescriptorPool> const& Pool,
                             std::shared_ptr<luvk::SwapChain> const&      Swap,
@@ -39,7 +37,7 @@ namespace luvk_example
         ~ImGuiLayer() override;
 
         void Draw() override;
-        void UpdatePreview(const VkCommandBuffer& Cmd);
+        void UpdatePreview(const VkCommandBuffer Cmd);
 
     private:
         void InitializeResources(std::shared_ptr<luvk::Device> const&         Device,

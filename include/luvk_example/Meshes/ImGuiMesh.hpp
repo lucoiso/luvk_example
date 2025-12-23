@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include <luvk/Types/Mesh.hpp>
 #include <imgui.h>
+#include <luvk/Types/Mesh.hpp>
 
 namespace luvk
 {
@@ -20,9 +20,9 @@ namespace luvk_example
 {
     class ImGuiMesh : public luvk::Mesh
     {
-        const ImDrawData*        m_ActiveDrawData{nullptr};
-        luvk::Vector<ImDrawVert> m_Vertices{};
-        luvk::Vector<ImDrawIdx>  m_Indices{};
+        const ImDrawData*       m_ActiveDrawData{nullptr};
+        std::vector<ImDrawVert> m_Vertices{};
+        std::vector<ImDrawIdx>  m_Indices{};
 
     public:
         ImGuiMesh() = delete;
@@ -36,6 +36,6 @@ namespace luvk_example
                            const std::shared_ptr<luvk::Material>& Font);
 
         void UpdateBuffers(const ImDrawData* DrawData, std::uint32_t CurrentFrame);
-        void Render(const VkCommandBuffer& CommandBuffer, std::uint32_t CurrentFrame) const override;
+        void Render(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) const override;
     };
 }

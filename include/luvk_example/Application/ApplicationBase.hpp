@@ -21,6 +21,7 @@ namespace luvk
     class Synchronization;
     class ThreadPool;
     class DescriptorPool;
+    class Draw;
 } // namespace luvk
 
 namespace luvk_example
@@ -33,9 +34,8 @@ namespace luvk_example
 
         std::int32_t m_Width{};
         std::int32_t m_Height{};
+        float        m_DeltaTime{0.f};
         std::string  m_Title{};
-
-        float m_DeltaTime{0.f};
 
         SDL_Window*                   m_Window{};
         std::shared_ptr<InputManager> m_Input;
@@ -49,6 +49,7 @@ namespace luvk_example
         std::shared_ptr<luvk::Synchronization> m_SynchronizationModule{};
         std::shared_ptr<luvk::ThreadPool>      m_ThreadPoolModule{};
         std::shared_ptr<luvk::DescriptorPool>  m_DescriptorPoolModule{};
+        std::shared_ptr<luvk::Draw>            m_DrawModule{};
 
     public:
         explicit ApplicationBase(std::uint32_t Width, std::uint32_t Height, SDL_WindowFlags Flags);
