@@ -7,7 +7,6 @@
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Modules/Draw.hpp>
 #include <SDL3/SDL_events.h>
-#include <SDL3/SDL_vulkan.h>
 #include "luvk/Libraries/ShaderCompiler.hpp"
 #include "UserInterface/Components/Camera.hpp"
 #include "UserInterface/Layers/ImGuiLayer.hpp"

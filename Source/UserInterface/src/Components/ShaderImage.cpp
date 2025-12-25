@@ -248,7 +248,7 @@ void ShaderImage::Update(const VkCommandBuffer Cmd, const float DeltaTime)
 
 bool ShaderImage::Compile(const std::string& Source, std::string& OutError)
 {
-    const auto [Result, Data, Error] = luvk::CompileShaderSafe(Source);
+    const auto [Result, Data, Error] = luvk::CompileShaderSafe(Source, "spirv_1_4");
 
     if (Result)
     {
@@ -281,7 +281,7 @@ std::string ShaderImage::GetDefaultSource()
 
 void ShaderImage::Initialize()
 {
-    m_CachedVertexShader = luvk::CompileShader(g_ShaderImageVert);
+    m_CachedVertexShader = luvk::CompileShader(g_ShaderImageVert, "spirv_1_4");
 
     auto PreviewImage = std::make_shared<luvk::Image>(m_Device, m_Memory);
     PreviewImage->CreateImage({.Extent = {256, 256, 1},
