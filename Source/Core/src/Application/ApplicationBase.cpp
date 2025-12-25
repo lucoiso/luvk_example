@@ -1,6 +1,6 @@
 // Author: Lucas Vilas-Boas
 // Year: 2025
-// Repo: https://github.com/lucoiso/luvk-imgui-template
+// Repo: https://github.com/lucoiso/luvk_example
 
 #include "Core/Application/ApplicationBase.hpp"
 #include <execution>
@@ -21,7 +21,7 @@
 
 using namespace Core;
 
-constexpr luvk::InstanceCreationArguments g_InstArguments{.ApplicationName = "luvk-imgui-template", .VulkanApiVersion = VK_API_VERSION_1_3};
+constexpr luvk::InstanceCreationArguments g_InstArguments{.ApplicationName = "luvk_example", .VulkanApiVersion = VK_API_VERSION_1_3};
 
 ApplicationBase::ApplicationBase(const std::uint32_t Width, const std::uint32_t Height, const SDL_WindowFlags Flags)
     : m_Width(static_cast<std::int32_t>(Width)),

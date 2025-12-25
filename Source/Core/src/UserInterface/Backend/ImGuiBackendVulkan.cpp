@@ -1,6 +1,6 @@
 // Author: Lucas Vilas-Boas
 // Year: 2025
-// Repo: https://github.com/lucoiso/luvk-imgui-template
+// Repo: https://github.com/lucoiso/luvk_example
 
 #include "Core/UserInterface/Backend/ImGuiBackendVulkan.hpp"
 #include <luvk/Modules/CommandPool.hpp>
