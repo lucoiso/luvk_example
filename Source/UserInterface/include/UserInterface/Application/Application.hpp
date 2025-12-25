@@ -43,10 +43,10 @@ namespace UserInterface
         void CreateScene();
 
     protected:
-        void  PreRenderCallback(VkCommandBuffer CommandBuffer) override;
-        void  DrawCallback(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) override;
-        void  UserEventCallback(const SDL_Event& Event) override;
-        void  SetupDeviceExtensions() const override;
+        bool PreRenderCallback(VkCommandBuffer CommandBuffer) override;
+        bool DrawCallback(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) override;
+        void UserEventCallback(const SDL_Event& Event) override;
+        void SetupDeviceExtensions() const override;
         [[nodiscard]] void* GetDeviceFeatureChain() const override;
     };
 }

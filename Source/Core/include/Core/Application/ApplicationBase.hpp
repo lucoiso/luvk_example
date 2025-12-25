@@ -1,6 +1,6 @@
 // Author: Lucas Vilas-Boas
 // Year: 2025
-// Repo: https://github.com/lucoiso/luvk_example
+// Repo: https://github.com/lucoiso/luvk-imgui-template
 
 #pragma once
 
@@ -41,17 +41,7 @@ namespace Core
         SDL_Window*                     m_Window{};
         std::shared_ptr<InputManager>   m_Input;
         std::unique_ptr<ImGuiLayerBase> m_ImGuiLayer;
-
-        std::shared_ptr<luvk::Renderer>        m_Renderer{};
-        std::shared_ptr<luvk::Debug>           m_DebugModule{};
-        std::shared_ptr<luvk::SwapChain>       m_SwapChainModule{};
-        std::shared_ptr<luvk::Device>          m_DeviceModule{};
-        std::shared_ptr<luvk::Memory>          m_MemoryModule{};
-        std::shared_ptr<luvk::CommandPool>     m_CommandPoolModule{};
-        std::shared_ptr<luvk::Synchronization> m_SynchronizationModule{};
-        std::shared_ptr<luvk::ThreadPool>      m_ThreadPoolModule{};
-        std::shared_ptr<luvk::DescriptorPool>  m_DescriptorPoolModule{};
-        std::shared_ptr<luvk::Draw>            m_DrawModule{};
+        std::shared_ptr<luvk::Renderer> m_Renderer{};
 
     public:
         explicit ApplicationBase(std::uint32_t Width, std::uint32_t Height, SDL_WindowFlags Flags);
@@ -66,11 +56,7 @@ namespace Core
         void RegisterImGuiLayer(Args&&... InArguments)
         {
             m_ImGuiLayer = std::make_unique<ImGuiLayerType>(m_Window,
-                                                            m_Renderer->GetInstance(),
-                                                            m_DeviceModule,
-                                                            m_DescriptorPoolModule,
-                                                            m_SwapChainModule,
-                                                            m_MemoryModule,
+                                                            m_Renderer,
                                                             std::forward<Args>(InArguments)...);
             PostRegisterImGuiLayer();
         }
@@ -85,7 +71,7 @@ namespace Core
             return static_cast<std::uint32_t>(m_Height);
         }
 
-        void SetTitle(std::string_view Title);
+        void SetTitle(std::string_view Title) noexcept;
 
         [[nodiscard]] constexpr std::string_view GetTitle() const noexcept
         {
@@ -108,17 +94,18 @@ namespace Core
         }
 
     protected:
-        virtual void PreRenderCallback(VkCommandBuffer CommandBuffer);
-        virtual void DrawCallback(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame);
-        virtual void UserEventCallback(const SDL_Event& Event);
-        virtual void SetupInstanceExtensions() const;
+        virtual bool                PreRenderCallback(VkCommandBuffer CommandBuffer);
+        virtual bool                PostRenderCallback(VkCommandBuffer CommandBuffer);
+        virtual bool                DrawCallback(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame);
+        virtual void                UserEventCallback(const SDL_Event& Event);
+        virtual void                SetupInstanceExtensions() const;
         [[nodiscard]] virtual void* GetInstanceFeatureChain() const;
-        virtual void SetupDeviceExtensions() const;
+        virtual void                SetupDeviceExtensions() const;
         [[nodiscard]] virtual void* GetDeviceFeatureChain() const;
 
     private:
-        void PostRegisterImGuiLayer();
-        void RegisterInputBindings();
+        void               PostRegisterImGuiLayer();
+        void               RegisterInputBindings();
         void               RegisterModules();
         [[nodiscard]] bool InitializeModules() const;
         [[nodiscard]] bool InitializeDeviceModule() const;

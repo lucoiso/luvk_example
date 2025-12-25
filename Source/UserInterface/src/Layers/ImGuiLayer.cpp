@@ -10,20 +10,12 @@
 
 using namespace UserInterface;
 
-ImGuiLayer::ImGuiLayer(SDL_Window*                                  Window,
-                       const VkInstance                             Instance,
-                       std::shared_ptr<luvk::Device> const&         Device,
-                       std::shared_ptr<luvk::DescriptorPool> const& Pool,
-                       std::shared_ptr<luvk::SwapChain> const&      Swap,
-                       std::shared_ptr<luvk::Memory> const&         Memory)
-    : ImGuiLayerBase(Window,
-                     Instance,
-                     Device,
-                     Pool,
-                     Swap,
-                     Memory)
+ImGuiLayer::ImGuiLayer(SDL_Window*                            Window,
+                       std::shared_ptr<luvk::Renderer> const& Renderer)
+    : ImGuiLayerBase(Window, Renderer)
 {
-    InitializeResources(Device, Pool, Memory);
+    const luvk::RenderModules& Modules = Renderer->GetModules();
+    InitializeResources(Modules.DeviceModule, Modules.DescriptorPoolModule, Modules.MemoryModule);
 }
 
 ImGuiLayer::~ImGuiLayer()
@@ -58,7 +50,7 @@ void ImGuiLayer::Draw()
     DrawTexture();
 }
 
-void ImGuiLayer::UpdatePreview(const VkCommandBuffer Cmd)
+void ImGuiLayer::UpdatePreview(const VkCommandBuffer Cmd) const
 {
     m_ShaderImage->Update(Cmd, Application::GetInstance()->GetDeltaTime());
 }

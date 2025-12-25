@@ -75,8 +75,11 @@ Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
     Mat->Initialize(Device, nullptr, Memory, Pipeline);
     SetMaterial(Mat);
 
-    UploadVerticesToAll(std::as_bytes(std::span{PixVertices}), std::size(PixVertices));
-    UploadIndicesToAll(std::span{PixIndices});
+    for (std::int32_t CurrentFrame = 0; CurrentFrame < luvk::Constants::ImageCount; ++CurrentFrame)
+    {
+        UploadVertices(std::as_bytes(std::span{PixVertices}), std::size(PixVertices), CurrentFrame);
+        UploadIndices(std::span{PixIndices}, CurrentFrame);
+    }
 }
 
 void Pixel::AddInstance(const glm::vec2& Position)

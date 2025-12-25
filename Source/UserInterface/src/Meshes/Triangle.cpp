@@ -132,8 +132,12 @@ Triangle::Triangle(const std::shared_ptr<luvk::Device>&         Device,
     m_ComputeMat->SetDescriptorSet(Set);
 
     SetMaterial(m_GraphicsMat);
-    UploadVerticesToAll(std::as_bytes(std::span{Vertices}), 3);
-    UploadIndicesToAll(std::span{Indices});
+
+    for (std::int32_t CurrentFrame = 0; CurrentFrame < luvk::Constants::ImageCount; ++CurrentFrame)
+    {
+        UploadVertices(std::as_bytes(std::span{Vertices}), 3U, CurrentFrame);
+        UploadIndices(std::span{Indices}, CurrentFrame);
+    }
 }
 
 void Triangle::Compute(const VkCommandBuffer Cmd) const

@@ -1,6 +1,6 @@
 // Author: Lucas Vilas-Boas
 // Year: 2025
-// Repo: https://github.com/lucoiso/luvk_example
+// Repo: https://github.com/lucoiso/luvk-imgui-template
 
 #include "Core/Components/InputManager.hpp"
 #include <SDL3/SDL_mouse.h>

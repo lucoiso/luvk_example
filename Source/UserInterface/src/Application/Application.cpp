@@ -24,15 +24,11 @@ Application::Application(const std::uint32_t Width, const std::uint32_t Height)
 
 bool Application::Initialize()
 {
-    volkInitialize();
     luvk::InitializeShaderCompiler();
 
     if (ApplicationBase::Initialize())
     {
-        volkLoadInstance(s_Instance->m_Renderer->GetInstance());
-        volkLoadDevice(s_Instance->m_DeviceModule->GetLogicalDevice());
         CreateScene();
-
         return true;
     }
 
@@ -41,7 +37,8 @@ bool Application::Initialize()
 
 void Application::Shutdown()
 {
-    m_DeviceModule->WaitIdle();
+    const luvk::RenderModules& Modules = m_Renderer->GetModules();
+    Modules.DeviceModule->WaitIdle();
 
     m_CubeMesh.reset();
     m_TriangleMesh.reset();
@@ -70,12 +67,14 @@ std::shared_ptr<Application> Application::GetInstance()
 
 void Application::CreateScene()
 {
-    m_CubeMesh     = std::make_unique<Cube>(m_DeviceModule, m_SwapChainModule, m_MemoryModule, m_DescriptorPoolModule);
-    m_TriangleMesh = std::make_unique<Triangle>(m_DeviceModule, m_SwapChainModule, m_MemoryModule, m_DescriptorPoolModule);
-    m_PixelMesh    = std::make_unique<Pixel>(m_DeviceModule, m_SwapChainModule, m_MemoryModule);
+    const luvk::RenderModules& Modules = m_Renderer->GetModules();
+
+    m_CubeMesh     = std::make_unique<Cube>(Modules.DeviceModule, Modules.SwapChainModule, Modules.MemoryModule, Modules.DescriptorPoolModule);
+    m_TriangleMesh = std::make_unique<Triangle>(Modules.DeviceModule, Modules.SwapChainModule, Modules.MemoryModule, Modules.DescriptorPoolModule);
+    m_PixelMesh    = std::make_unique<Pixel>(Modules.DeviceModule, Modules.SwapChainModule, Modules.MemoryModule);
 }
 
-void Application::PreRenderCallback(VkCommandBuffer CommandBuffer)
+bool Application::PreRenderCallback(VkCommandBuffer CommandBuffer)
 {
     if (!ImGui::GetIO().WantCaptureMouse)
     {
@@ -90,16 +89,16 @@ void Application::PreRenderCallback(VkCommandBuffer CommandBuffer)
 
     dynamic_cast<ImGuiLayer*>(m_ImGuiLayer.get())->UpdatePreview(CommandBuffer);
 
-    ApplicationBase::PreRenderCallback(CommandBuffer);
+    return ApplicationBase::PreRenderCallback(CommandBuffer);
 }
 
-void Application::DrawCallback(const VkCommandBuffer CommandBuffer, const std::uint32_t CurrentFrame)
+bool Application::DrawCallback(const VkCommandBuffer CommandBuffer, const std::uint32_t CurrentFrame)
 {
     m_CubeMesh->Render(CommandBuffer, CurrentFrame);
     m_TriangleMesh->Render(CommandBuffer, CurrentFrame);
     m_PixelMesh->Render(CommandBuffer, CurrentFrame);
 
-    ApplicationBase::DrawCallback(CommandBuffer, CurrentFrame);
+    return ApplicationBase::DrawCallback(CommandBuffer, CurrentFrame);
 }
 
 void Application::UserEventCallback(const SDL_Event& Event)
@@ -134,8 +133,9 @@ void Application::UserEventCallback(const SDL_Event& Event)
 void Application::SetupDeviceExtensions() const
 {
     ApplicationBase::SetupDeviceExtensions();
+    const luvk::RenderModules& Modules = m_Renderer->GetModules();
 
-    if (auto& DevExt = m_DeviceModule->GetExtensions();
+    if (auto& DevExt = Modules.DeviceModule->GetExtensions();
         DevExt.HasAvailableExtension(VK_EXT_MESH_SHADER_EXTENSION_NAME))
     {
         DevExt.SetExtensionState("", VK_EXT_MESH_SHADER_EXTENSION_NAME, true);
