@@ -1,6 +1,8 @@
-// Author: Lucas Vilas-Boas
-// Year: 2025
-// Repo: https://github.com/lucoiso/luvk_example
+/*
+ * Author: Lucas Vilas-Boas
+ * Year: 2025
+ * Repo: https://github.com/lucoiso/luvk_example
+ */
 
 #include "UserInterface/Components/Camera.hpp"
 #include <glm/gtc/matrix_transform.hpp>

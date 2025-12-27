@@ -1,6 +1,8 @@
-// Author: Lucas Vilas-Boas
-// Year: 2025
-// Repo: https://github.com/lucoiso/luvk_example
+/*
+ * Author: Lucas Vilas-Boas
+ * Year: 2025
+ * Repo: https://github.com/lucoiso/luvk_example
+ */
 
 #include "UserInterface/Application/Application.hpp"
 #include <imgui.h>
@@ -74,7 +76,7 @@ void Application::CreateScene()
     m_PixelMesh    = std::make_unique<Pixel>(Modules.DeviceModule, Modules.SwapChainModule, Modules.MemoryModule);
 }
 
-bool Application::PreRenderCallback(VkCommandBuffer CommandBuffer)
+bool Application::OnBeginFrame(VkCommandBuffer CommandBuffer)
 {
     if (!ImGui::GetIO().WantCaptureMouse)
     {
@@ -89,16 +91,16 @@ bool Application::PreRenderCallback(VkCommandBuffer CommandBuffer)
 
     dynamic_cast<ImGuiLayer*>(m_ImGuiLayer.get())->UpdatePreview(CommandBuffer);
 
-    return ApplicationBase::PreRenderCallback(CommandBuffer);
+    return ApplicationBase::OnBeginFrame(CommandBuffer);
 }
 
-bool Application::DrawCallback(const VkCommandBuffer CommandBuffer, const std::uint32_t CurrentFrame)
+bool Application::OnRecordFrame(const VkCommandBuffer CommandBuffer, const std::uint32_t CurrentFrame)
 {
     m_CubeMesh->Render(CommandBuffer, CurrentFrame);
     m_TriangleMesh->Render(CommandBuffer, CurrentFrame);
     m_PixelMesh->Render(CommandBuffer, CurrentFrame);
 
-    return ApplicationBase::DrawCallback(CommandBuffer, CurrentFrame);
+    return ApplicationBase::OnRecordFrame(CommandBuffer, CurrentFrame);
 }
 
 void Application::UserEventCallback(const SDL_Event& Event)

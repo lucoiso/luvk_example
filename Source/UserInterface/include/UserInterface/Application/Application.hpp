@@ -1,6 +1,8 @@
-// Author: Lucas Vilas-Boas
-// Year: 2025
-// Repo: https://github.com/lucoiso/luvk_example
+/*
+ * Author: Lucas Vilas-Boas
+ * Year: 2025
+ * Repo: https://github.com/lucoiso/luvk_example
+ */
 
 #pragma once
 
@@ -43,8 +45,8 @@ namespace UserInterface
         void CreateScene();
 
     protected:
-        bool PreRenderCallback(VkCommandBuffer CommandBuffer) override;
-        bool DrawCallback(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) override;
+        bool OnBeginFrame(VkCommandBuffer CommandBuffer) override;
+        bool OnRecordFrame(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) override;
         void UserEventCallback(const SDL_Event& Event) override;
         void SetupDeviceExtensions() const override;
         [[nodiscard]] void* GetDeviceFeatureChain() const override;
