@@ -3,7 +3,6 @@
 # Repo: https://github.com/lucoiso/luvk_example
 
 # Options
-# SET(BUILD_SHARED_LIBS ON CACHE BOOL "" FORCE)
 SET(LUVK_INCLUDE_SLANG_COMPILER ON CACHE BOOL "" FORCE)
 
 # Sub-Directories

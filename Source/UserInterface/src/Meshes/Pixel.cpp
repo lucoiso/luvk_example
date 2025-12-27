@@ -100,5 +100,6 @@ void Pixel::Render(const VkCommandBuffer CommandBuffer, const std::uint32_t Curr
     {
         Self.UpdateInstances(std::as_bytes(std::span{m_LocalInstances}), static_cast<std::uint32_t>(m_LocalInstances.size()), CurrentFrame);
     }
+
     Mesh::Render(CommandBuffer, CurrentFrame);
 }

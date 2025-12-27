@@ -148,6 +148,7 @@ void Triangle::Compute(const VkCommandBuffer Cmd) const
     }
 
     m_ComputeMat->Bind(Cmd);
+
     vkCmdPushConstants(Cmd, m_ComputePipeline->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &m_DeltaTime);
     vkCmdDispatch(Cmd, (static_cast<uint32_t>(std::size(m_Particles)) + 63) / 64, 1, 1);
 
