@@ -1,5 +1,5 @@
 /*
- * Author: Lucas Vilas-Boas
+* Author: Lucas Vilas-Boas
  * Year: 2025
  * Repo: https://github.com/lucoiso/luvk_example
  */
@@ -8,7 +8,7 @@
 
 #include <memory>
 #include <glm/glm.hpp>
-#include <luvk/Types/Mesh.hpp>
+#include <luvk/Resources/Mesh.hpp>
 
 namespace luvk
 {
@@ -32,7 +32,7 @@ namespace UserInterface
 
     class Triangle : public luvk::Mesh
     {
-        float                           m_DeltaTime{0.f};
+        float                           m_DeltaTime{0.F};
         std::shared_ptr<luvk::Pipeline> m_ComputePipeline{};
         std::shared_ptr<luvk::Buffer>   m_ParticleBuffer{};
         std::shared_ptr<luvk::Material> m_GraphicsMat{};
@@ -40,16 +40,11 @@ namespace UserInterface
         std::vector<Particle>           m_Particles{};
 
     public:
-        Triangle(const std::shared_ptr<luvk::Device>&         Device,
-                 const std::shared_ptr<luvk::SwapChain>&      Swap,
-                 const std::shared_ptr<luvk::Memory>&         Memory,
-                 const std::shared_ptr<luvk::DescriptorPool>& Pool);
+        Triangle(luvk::Device* Device, const luvk::SwapChain* Swap, luvk::Memory* Memory, luvk::DescriptorPool* Pool);
 
         void AddInstance(glm::vec2 const& Position);
-
         void Compute(VkCommandBuffer Cmd) const;
-
-        void Tick(float DeltaTime) override;
-        void Render(VkCommandBuffer Cmd, std::uint32_t CurrentFrame) const override;
+        void Tick(float DeltaTime);
+        void Render(VkCommandBuffer Cmd) const override;
     };
 }

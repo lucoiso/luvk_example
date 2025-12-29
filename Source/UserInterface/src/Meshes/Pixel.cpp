@@ -7,8 +7,8 @@
 #include "UserInterface/Meshes/Pixel.hpp"
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/SwapChain.hpp>
+#include <luvk/Resources/Material.hpp>
 #include <luvk/Resources/Pipeline.hpp>
-#include <luvk/Types/Material.hpp>
 
 using namespace UserInterface;
 
@@ -41,67 +41,69 @@ float4 main(float4 vColor : COLOR) : SV_Target
 }
 )";
 
-Pixel::Pixel(const std::shared_ptr<luvk::Device>&    Device,
-             const std::shared_ptr<luvk::SwapChain>& Swap,
-             const std::shared_ptr<luvk::Memory>&    Memory)
+Pixel::Pixel(luvk::Device* Device, const luvk::SwapChain* Swap, luvk::Memory* Memory)
     : Mesh(Device, Memory)
 {
-    constexpr std::array<glm::vec2, 4> PixVertices{{glm::vec2{-0.01f, 0.01f},
-                                                    glm::vec2{0.01f, 0.01f},
-                                                    glm::vec2{-0.01f, -0.01f},
-                                                    glm::vec2{0.01f, -0.01f}}};
+    constexpr std::array PixVertices = {-0.01f, 0.01f, 0.01f, 0.01f, -0.01f, -0.01f, 0.01f, -0.01f};
 
-    constexpr std::array<std::uint16_t, 6> PixIndices{{0, 2, 1, 2, 3, 1}};
+    Mesh::UploadVertices(std::as_bytes(std::span{PixVertices}), 4);
 
-    constexpr std::array Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
-                                  VkVertexInputBindingDescription{1, sizeof(luvk::Mesh::InstanceInfo), VK_VERTEX_INPUT_RATE_INSTANCE}};
+    m_InstanceBuffer        = std::make_shared<luvk::Buffer>(Device, Memory);
+    const auto     Pipeline = std::make_shared<luvk::Pipeline>(Device);
+    const VkFormat Format   = Swap->GetFormat();
 
-    constexpr std::array Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
-                                    VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Position)},
-                                    VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, XForm.Rotation) + sizeof(float) * 2},
-                                    VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(luvk::Mesh::InstanceInfo, Color)}};
+    std::vector<VkVertexInputBindingDescription> Bindings = {{0, sizeof(float) * 2, VK_VERTEX_INPUT_RATE_VERTEX},
+                                                             {1, sizeof(PixelInstanceInfo), VK_VERTEX_INPUT_RATE_INSTANCE}};
 
-    const auto Pipeline = std::make_shared<luvk::Pipeline>(Device);
+    std::vector<VkVertexInputAttributeDescription> Attributes = {{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+                                                                 {1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(PixelInstanceInfo, XForm.Position)},
+                                                                 {2, 1, VK_FORMAT_R32_SFLOAT, offsetof(PixelInstanceInfo, XForm.Rotation)},
+                                                                 {3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(PixelInstanceInfo, Color)}};
 
-    Pipeline->CreateGraphicsPipeline({.Extent = Swap->GetExtent(),
-                                      .ColorFormats = std::array{Swap->GetCreationArguments().Format},
-                                      .RenderPass = Swap->GetRenderPass(),
-                                      .VertexShader = luvk::CompileShader(g_PixelVertexShader),
-                                      .FragmentShader = luvk::CompileShader(g_PixelFragmentShader),
-                                      .Bindings = Bindings,
-                                      .Attributes = Attributes,
-                                      .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                      .CullMode = VK_CULL_MODE_NONE});
+    Pipeline->CreateGraphicsPipeline({.VertexShader     = luvk::CompileShader(g_PixelVertexShader),
+                                      .FragmentShader   = luvk::CompileShader(g_PixelFragmentShader),
+                                      .ColorFormats     = std::span{&Format, 1},
+                                      .Topology         = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                                      .CullMode         = VK_CULL_MODE_NONE,
+                                      .VertexBindings   = Bindings,
+                                      .VertexAttributes = Attributes});
 
     const auto Mat = std::make_shared<luvk::Material>();
-    Mat->Initialize(Device, nullptr, Memory, Pipeline);
+    Mat->SetPipeline(Pipeline);
     SetMaterial(Mat);
-
-    for (std::int32_t CurrentFrame = 0; CurrentFrame < luvk::Constants::ImageCount; ++CurrentFrame)
-    {
-        UploadVertices(std::as_bytes(std::span{PixVertices}), std::size(PixVertices), CurrentFrame);
-        UploadIndices(std::span{PixIndices}, CurrentFrame);
-    }
 }
 
 void Pixel::AddInstance(const glm::vec2& Position)
 {
-    InstanceInfo Inst{};
-    Inst.XForm.Position.at(0) = Position.x;
-    Inst.XForm.Position.at(1) = Position.y;
-    Inst.XForm.Rotation.at(2) = 0.F;
-    Inst.Color                = {0.5F, 0.5F, 0.5F, 1.F};
-
+    PixelInstanceInfo Inst{};
+    Inst.XForm.Position[0] = Position.x;
+    Inst.XForm.Position[1] = Position.y;
+    Inst.XForm.Rotation[0] = 0.0f;
+    Inst.Color             = {1.0f, 1.0f, 1.0f, 1.0f};
     m_LocalInstances.push_back(Inst);
 }
 
-void Pixel::Render(const VkCommandBuffer CommandBuffer, const std::uint32_t CurrentFrame) const
+void Pixel::Render(VkCommandBuffer CommandBuffer) const
 {
-    auto& Self = const_cast<Pixel&>(*this);
-    if (!m_LocalInstances.empty())
+    if (m_LocalInstances.empty()) return;
+
+    if (m_InstanceBuffer->GetSize() < m_LocalInstances.size() * sizeof(PixelInstanceInfo))
     {
-        Self.UpdateInstances(std::as_bytes(std::span{m_LocalInstances}), static_cast<std::uint32_t>(m_LocalInstances.size()), CurrentFrame);
+        m_InstanceBuffer->CreateBuffer({.Size               = m_LocalInstances.size() * sizeof(PixelInstanceInfo) * 2,
+                                        .Usage              = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                        .MemoryUsage        = VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                        .PersistentlyMapped = true});
     }
 
-    Mesh::Render(CommandBuffer, CurrentFrame);
+    m_InstanceBuffer->Upload(std::as_bytes(std::span{m_LocalInstances}));
+    m_Material->Bind(CommandBuffer);
+
+    const VkBuffer         Vtx       = m_VertexBuffer->GetHandle();
+    const VkBuffer         Inst      = m_InstanceBuffer->GetHandle();
+    constexpr VkDeviceSize Offsets[] = {0};
+
+    vkCmdBindVertexBuffers(CommandBuffer, 0, 1, &Vtx, Offsets);
+    vkCmdBindVertexBuffers(CommandBuffer, 1, 1, &Inst, Offsets);
+
+    vkCmdDraw(CommandBuffer, 4, static_cast<std::uint32_t>(m_LocalInstances.size()), 0, 0);
 }

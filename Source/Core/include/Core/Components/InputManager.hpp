@@ -9,6 +9,8 @@
 #include <functional>
 #include <memory>
 #include <unordered_set>
+#include <vector>
+#include <unordered_map>
 #include <SDL3/SDL_events.h>
 
 namespace Core

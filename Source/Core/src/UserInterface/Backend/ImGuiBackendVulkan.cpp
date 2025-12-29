@@ -5,11 +5,14 @@
  */
 
 #include "Core/UserInterface/Backend/ImGuiBackendVulkan.hpp"
+#include <luvk/Interfaces/IServiceLocator.hpp>
 #include <luvk/Modules/CommandPool.hpp>
 #include <luvk/Modules/DescriptorPool.hpp>
 #include <luvk/Modules/Device.hpp>
 #include <luvk/Modules/Draw.hpp>
+#include <luvk/Modules/Instance.hpp>
 #include <luvk/Modules/Memory.hpp>
+#include <luvk/Modules/Renderer.hpp>
 #include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Modules/Synchronization.hpp>
 #include "Core/Meshes/ImGuiMesh.hpp"
@@ -18,28 +21,22 @@
 
 using namespace Core;
 
-static VkQueue GetGraphicsQueue(const std::shared_ptr<luvk::Device>& Device)
+static VkQueue GetGraphicsQueue(const luvk::Device* Device)
 {
-    const std::uint32_t FamilyIndex = Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
-    return Device->GetQueue(FamilyIndex);
+    return Device->GetQueue(VK_QUEUE_GRAPHICS_BIT);
 }
 
-ImGuiBackendVulkan::ImGuiBackendVulkan(const VkInstance                             Instance,
-                                       const std::shared_ptr<luvk::Device>&         Device,
-                                       const std::shared_ptr<luvk::DescriptorPool>& Pool,
-                                       const std::shared_ptr<luvk::SwapChain>&      Swap,
-                                       const std::shared_ptr<luvk::Memory>&         Memory)
-    : m_Instance(Instance),
-      m_Device(Device),
-      m_SwapChain(Swap),
-      m_Memory(Memory)
+ViewportData::~ViewportData() = default;
+
+ImGuiBackendVulkan::ImGuiBackendVulkan(luvk::Renderer* Renderer)
+    : m_Renderer(Renderer)
 {
     ImGuiIO& IO                = ImGui::GetIO();
     IO.BackendRendererName     = "ImGuiBackendVulkan_LUVK";
     IO.BackendRendererUserData = static_cast<void*>(this);
     IO.BackendFlags            |= ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_RendererHasViewports;
 
-    m_Mesh = std::make_shared<ImGuiMesh>(m_Device, m_Memory, Pool, Swap);
+    m_Mesh = std::make_shared<ImGuiMesh>(Renderer->GetModule<luvk::Device>(), Renderer->GetModule<luvk::Memory>(), Renderer->GetModule<luvk::DescriptorPool>());
 
     if (IO.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
@@ -64,57 +61,55 @@ void ImGuiBackendVulkan::NewFrame() const
     ImGui::NewFrame();
 }
 
-void ImGuiBackendVulkan::Render(const VkCommandBuffer Cmd, const std::uint32_t CurrentFrame) const
+void ImGuiBackendVulkan::Render(const VkCommandBuffer Cmd) const
 {
     ImGui::Render();
     const ImDrawData* const DrawData = ImGui::GetDrawData();
-
-    m_Mesh->UpdateBuffers(DrawData, CurrentFrame);
-    m_Mesh->Render(Cmd, CurrentFrame);
+    m_Mesh->UpdateBuffers(DrawData);
+    m_Mesh->Render(Cmd);
 }
 
 void ImGuiBackendVulkan::CreateWindow(ImGuiViewport* const Viewport)
 {
-    const auto Backend = static_cast<ImGuiBackendVulkan*>(ImGui::GetIO().BackendRendererUserData);
-    const auto Device  = Backend->GetDevice();
+    const auto Backend  = static_cast<ImGuiBackendVulkan*>(ImGui::GetIO().BackendRendererUserData);
+    const auto Renderer = Backend->GetRenderer();
 
     auto* const Data           = new ViewportData();
+    Data->Renderer             = std::make_unique<luvk::Renderer>(Renderer);
     Viewport->RendererUserData = static_cast<void*>(Data);
 
     ImGui::GetPlatformIO().Platform_CreateVkSurface(Viewport,
-                                                    reinterpret_cast<ImU64>(Backend->GetInstance()),
+                                                    reinterpret_cast<ImU64>(Renderer->GetModule<luvk::Instance>()->GetHandle()),
                                                     nullptr,
                                                     reinterpret_cast<ImU64*>(&Data->Surface));
 
-    Data->CommandPool = luvk::CreateModule<luvk::CommandPool>(Device);
-    Data->Sync        = luvk::CreateModule<luvk::Synchronization>(Device);
-    Data->SwapChain   = luvk::CreateModule<luvk::SwapChain>(Device, Backend->GetMemory(), Data->Sync);
-    Data->Draw        = luvk::CreateModule<luvk::Draw>(Device, Data->Sync);
+    auto* SwapModule        = Data->Renderer->RegisterModule<luvk::SwapChain>();
+    auto  DeleteSurfaceNode = luvk::EventNode::NewNode([Data]
+                                                       {
+                                                           if (const auto* InstanceMod = Data->Renderer->GetModule<luvk::Instance>())
+                                                           {
+                                                               vkDestroySurfaceKHR(InstanceMod->GetHandle(), Data->Surface, nullptr);
+                                                               Data->Surface = VK_NULL_HANDLE;
+                                                           }
+                                                       },
+                                                       true);
 
-    Data->Draw->RegisterOnRecordFrame(luvk::DrawCallbackInfo{[Data, Viewport](const VkCommandBuffer CommandBuffer)
+    Data->SurfaceDeleteHandle = SwapModule->GetEventSystem().AddNode(std::move(DeleteSurfaceNode), luvk::ModuleEvents::OnShutdown);
+
+    Data->Renderer->RegisterModule<luvk::CommandPool>();
+    Data->Renderer->RegisterModule<luvk::Synchronization>();
+    auto* DrawModule = Data->Renderer->RegisterModule<luvk::Draw>();
+    Data->Renderer->InitializeModules();
+
+    SwapModule->CreateSwapChain({.Extent = {static_cast<uint32_t>(Viewport->Size.x), static_cast<uint32_t>(Viewport->Size.y)}, .Surface = Data->Surface});
+
+    Data->Mesh = std::make_shared<ImGuiMesh>(Renderer->GetModule<luvk::Device>(), Renderer->GetModule<luvk::Memory>(), Backend->GetMesh()->GetMaterial());
+
+    DrawModule->AddDrawCallback([Data, Viewport](const VkCommandBuffer Cmd, [[maybe_unused]] const std::uint32_t Frame)
     {
-        if (Data && Viewport)
-        {
-            const std::uint32_t CurrentFrame = Data->Sync->GetCurrentFrame();
-            Data->Mesh->UpdateBuffers(Viewport->DrawData, CurrentFrame);
-            Data->Mesh->Render(CommandBuffer, CurrentFrame);
-
-            return true;
-        }
-        return false;
-    }});
-
-    Data->Mesh = std::make_shared<ImGuiMesh>(Device, Backend->GetMemory(), Backend->GetMesh()->GetMaterial());
-
-    Data->SwapChain->CreateSwapChain({.Extent = {.width  = static_cast<std::uint32_t>(Viewport->Size.x),
-                                                 .height = static_cast<std::uint32_t>(Viewport->Size.y)},
-                                      .Surface = Data->Surface},
-                                     nullptr);
-
-    const std::uint32_t QueueFamilyIndex = Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
-    Data->CommandPool->CreateCommandPool(QueueFamilyIndex, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-
-    Data->Sync->Initialize(Data->CommandPool->AllocateRenderCommandBuffers());
+        Data->Mesh->UpdateBuffers(Viewport->DrawData);
+        Data->Mesh->Render(Cmd);
+    });
 }
 
 void ImGuiBackendVulkan::DestroyWindow(ImGuiViewport* const Viewport)
@@ -125,21 +120,10 @@ void ImGuiBackendVulkan::DestroyWindow(ImGuiViewport* const Viewport)
         return;
     }
 
-    const auto Backend = static_cast<ImGuiBackendVulkan*>(ImGui::GetIO().BackendRendererUserData);
-    const auto Device  = Backend->GetDevice();
+    const auto* Device = Data->Renderer->GetModule<luvk::Device>();
+    Device->WaitQueue(VK_QUEUE_GRAPHICS_BIT);
 
-    Device->WaitQueue(GetGraphicsQueue(Device));
-
-    Data->Mesh.reset();
-    Data->Sync.reset();
-    Data->CommandPool.reset();
-    Data->SwapChain.reset();
-    Data->Draw.reset();
-
-    if (Data->Surface != VK_NULL_HANDLE)
-    {
-        vkDestroySurfaceKHR(Backend->GetInstance(), Data->Surface, nullptr);
-    }
+    Data->Renderer->Shutdown();
 
     delete Data;
     Viewport->RendererUserData = nullptr;
@@ -153,14 +137,11 @@ void ImGuiBackendVulkan::SetWindowSize(ImGuiViewport* const Viewport, const ImVe
         return;
     }
 
-    const auto Device = static_cast<ImGuiBackendVulkan*>(ImGui::GetIO().BackendRendererUserData)->GetDevice();
+    const auto* Device = Data->Renderer->GetModule<luvk::Device>();
+    Device->WaitQueue(VK_QUEUE_GRAPHICS_BIT);
 
-    Device->WaitQueue(GetGraphicsQueue(Device));
-
-    Data->SwapChain->Recreate({static_cast<uint32_t>(Size.x),
-                               static_cast<uint32_t>(Size.y)},
-                              nullptr);
-    Data->Sync->ResetFrames();
+    auto* SwapModule = Data->Renderer->RegisterModule<luvk::SwapChain>();
+    SwapModule->Recreate({static_cast<uint32_t>(Size.x), static_cast<uint32_t>(Size.y)});
 }
 
 void ImGuiBackendVulkan::RenderWindow(ImGuiViewport* const Viewport, void*)
@@ -171,30 +152,8 @@ void ImGuiBackendVulkan::RenderWindow(ImGuiViewport* const Viewport, void*)
         return;
     }
 
-    luvk::FrameData&                   Frame      = Data->Sync->GetCurrentFrameData();
-    const std::optional<std::uint32_t> ImageIndex = Data->SwapChain->Acquire(Frame);
-
-    if (!ImageIndex.has_value())
-    {
-        Data->ImageIndex = -1;
-        return;
-    }
-
-    const std::uint32_t IndexValue = ImageIndex.value();
-    Data->ImageIndex               = static_cast<std::int32_t>(IndexValue);
-
-    Data->Draw->RecordCommands(Frame, Data->SwapChain->GetRenderTarget(IndexValue));
-    Data->Draw->SubmitFrame(Frame, IndexValue);
+    const auto* DrawModule = Data->Renderer->RegisterModule<luvk::Draw>();
+    DrawModule->RenderFrame();
 }
 
-void ImGuiBackendVulkan::SwapBuffers(ImGuiViewport* const Viewport, void*)
-{
-    const auto Data = static_cast<ViewportData*>(Viewport->RendererUserData);
-
-    if (!Data || Data->ImageIndex < 0)
-    {
-        return;
-    }
-
-    Data->SwapChain->Present(Data->ImageIndex);
-}
+void ImGuiBackendVulkan::SwapBuffers([[maybe_unused]] ImGuiViewport* const Viewport, void*) {}

@@ -161,15 +161,15 @@ ImGuiBackendSDL::ImGuiBackendSDL(SDL_Window* Window)
     IO.BackendFlags            |= ImGuiBackendFlags_PlatformHasViewports;
     IO.BackendFlags            |= ImGuiBackendFlags_HasMouseHoveredViewport;
 
-    m_MouseCursors.at(ImGuiMouseCursor_Arrow)      = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
-    m_MouseCursors.at(ImGuiMouseCursor_TextInput)  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
-    m_MouseCursors.at(ImGuiMouseCursor_ResizeAll)  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
-    m_MouseCursors.at(ImGuiMouseCursor_ResizeNS)   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
-    m_MouseCursors.at(ImGuiMouseCursor_ResizeEW)   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
-    m_MouseCursors.at(ImGuiMouseCursor_ResizeNESW) = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE);
-    m_MouseCursors.at(ImGuiMouseCursor_ResizeNWSE) = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
-    m_MouseCursors.at(ImGuiMouseCursor_Hand)       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
-    m_MouseCursors.at(ImGuiMouseCursor_NotAllowed) = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED);
+    m_MouseCursors[ImGuiMouseCursor_Arrow]      = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+    m_MouseCursors[ImGuiMouseCursor_TextInput]  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
+    m_MouseCursors[ImGuiMouseCursor_ResizeAll]  = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
+    m_MouseCursors[ImGuiMouseCursor_ResizeNS]   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
+    m_MouseCursors[ImGuiMouseCursor_ResizeEW]   = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
+    m_MouseCursors[ImGuiMouseCursor_ResizeNESW] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE);
+    m_MouseCursors[ImGuiMouseCursor_ResizeNWSE] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE);
+    m_MouseCursors[ImGuiMouseCursor_Hand]       = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+    m_MouseCursors[ImGuiMouseCursor_NotAllowed] = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED);
 
     ImGuiViewport* MainViewport  = ImGui::GetMainViewport();
     MainViewport->PlatformHandle = static_cast<void*>(m_Window);
@@ -249,7 +249,7 @@ void ImGuiBackendSDL::NewFrame() const
         }
         else
         {
-            SDL_Cursor* const NewCursor = m_MouseCursors.at(CursorType) ? m_MouseCursors.at(CursorType) : m_MouseCursors.at(ImGuiMouseCursor_Arrow);
+            SDL_Cursor* const NewCursor = m_MouseCursors[CursorType] ? m_MouseCursors[CursorType] : m_MouseCursors[ImGuiMouseCursor_Arrow];
 
             SDL_SetCursor(NewCursor);
             SDL_ShowCursor();
@@ -321,6 +321,11 @@ bool ImGuiBackendSDL::ProcessEvent(const SDL_Event& Event) const
             }
             return IO.WantCaptureMouse;
         }
+        case SDL_EVENT_TEXT_INPUT:
+        {
+            IO.AddInputCharactersUTF8(Event.text.text);
+            return IO.WantCaptureKeyboard;
+        }
         case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
         {
             if (const SDL_Window* const Window = SDL_GetWindowFromID(Event.window.windowID))
@@ -350,9 +355,21 @@ bool ImGuiBackendSDL::ProcessEvent(const SDL_Event& Event) const
             return true;
         }
         case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        {
+            if (SDL_Window* Window = SDL_GetWindowFromID(Event.window.windowID))
+            {
+                SDL_StartTextInput(Window);
+            }
+            IO.AddFocusEvent(true);
+            return true;
+        }
         case SDL_EVENT_WINDOW_FOCUS_LOST:
         {
-            IO.AddFocusEvent(Event.type == SDL_EVENT_WINDOW_FOCUS_GAINED);
+            if (SDL_Window* Window = SDL_GetWindowFromID(Event.window.windowID))
+            {
+                SDL_StopTextInput(Window);
+            }
+            IO.AddFocusEvent(false);
             return true;
         }
         case SDL_EVENT_KEY_DOWN:
@@ -433,12 +450,14 @@ void ImGuiBackendSDL::CreateWindow(ImGuiViewport* const Viewport)
         WindowFlags |= SDL_WINDOW_ALWAYS_ON_TOP;
     }
 
-    Viewport->PlatformHandle = static_cast<void*>(SDL_CreateWindow("No Title Yet",
-                                                                   static_cast<int>(Viewport->Size.x),
-                                                                   static_cast<int>(Viewport->Size.y),
+    Viewport->PlatformHandle = static_cast<void*>(SDL_CreateWindow("Untitled",
+                                                                   static_cast<std::int32_t>(Viewport->Size.x),
+                                                                   static_cast<std::int32_t>(Viewport->Size.y),
                                                                    WindowFlags));
 
-    SDL_SetWindowPosition(static_cast<SDL_Window*>(Viewport->PlatformHandle), static_cast<int>(Viewport->Pos.x), static_cast<int>(Viewport->Pos.y));
+    SDL_SetWindowPosition(static_cast<SDL_Window*>(Viewport->PlatformHandle),
+                          static_cast<std::int32_t>(Viewport->Pos.x),
+                          static_cast<std::int32_t>(Viewport->Pos.y));
 }
 
 void ImGuiBackendSDL::DestroyWindow(ImGuiViewport* const Viewport)
@@ -460,13 +479,12 @@ ImVec2 ImGuiBackendSDL::GetWindowPos(ImGuiViewport* const Viewport)
     std::int32_t PosX = 0;
     std::int32_t PosY = 0;
     SDL_GetWindowPosition(static_cast<SDL_Window*>(Viewport->PlatformHandle), &PosX, &PosY);
-    return {static_cast<float>(PosX),
-            static_cast<float>(PosY)};
+    return {static_cast<float>(PosX), static_cast<float>(PosY)};
 }
 
 void ImGuiBackendSDL::SetWindowPos(ImGuiViewport* const Viewport, const ImVec2 Pos)
 {
-    SDL_SetWindowPosition(static_cast<SDL_Window*>(Viewport->PlatformHandle), static_cast<int>(Pos.x), static_cast<int>(Pos.y));
+    SDL_SetWindowPosition(static_cast<SDL_Window*>(Viewport->PlatformHandle), static_cast<std::int32_t>(Pos.x), static_cast<std::int32_t>(Pos.y));
 }
 
 ImVec2 ImGuiBackendSDL::GetWindowSize(ImGuiViewport* const Viewport)
@@ -474,13 +492,12 @@ ImVec2 ImGuiBackendSDL::GetWindowSize(ImGuiViewport* const Viewport)
     std::int32_t Width  = 0;
     std::int32_t Height = 0;
     SDL_GetWindowSize(static_cast<SDL_Window*>(Viewport->PlatformHandle), &Width, &Height);
-    return {static_cast<float>(Width),
-            static_cast<float>(Height)};
+    return {static_cast<float>(Width), static_cast<float>(Height)};
 }
 
 void ImGuiBackendSDL::SetWindowSize(ImGuiViewport* const Viewport, const ImVec2 Size)
 {
-    SDL_SetWindowSize(static_cast<SDL_Window*>(Viewport->PlatformHandle), static_cast<int>(Size.x), static_cast<int>(Size.y));
+    SDL_SetWindowSize(static_cast<SDL_Window*>(Viewport->PlatformHandle), static_cast<std::int32_t>(Size.x), static_cast<std::int32_t>(Size.y));
 }
 
 void ImGuiBackendSDL::SetWindowTitle(ImGuiViewport* const Viewport, const char* Title)

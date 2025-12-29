@@ -6,13 +6,12 @@
 
 #include "UserInterface/Meshes/Triangle.hpp"
 #include <random>
-#include <glm/gtc/constants.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/SwapChain.hpp>
 #include <luvk/Resources/Buffer.hpp>
 #include <luvk/Resources/DescriptorSet.hpp>
+#include <luvk/Resources/Material.hpp>
 #include <luvk/Resources/Pipeline.hpp>
-#include <luvk/Types/Material.hpp>
 
 using namespace UserInterface;
 
@@ -72,98 +71,84 @@ void main(uint3 gl_GlobalInvocationID : SV_DispatchThreadID)
 
 constexpr VkPushConstantRange g_ConstantRange{VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float)};
 
-Triangle::Triangle(const std::shared_ptr<luvk::Device>&         Device,
-                   const std::shared_ptr<luvk::SwapChain>&      Swap,
-                   const std::shared_ptr<luvk::Memory>&         Memory,
-                   const std::shared_ptr<luvk::DescriptorPool>& Pool)
+Triangle::Triangle(luvk::Device* Device, const luvk::SwapChain* Swap, luvk::Memory* Memory, luvk::DescriptorPool* Pool)
     : Mesh(Device, Memory),
       m_ComputePipeline(std::make_shared<luvk::Pipeline>(Device)),
       m_ParticleBuffer(std::make_shared<luvk::Buffer>(Device, Memory)),
       m_GraphicsMat(std::make_shared<luvk::Material>()),
       m_ComputeMat(std::make_shared<luvk::Material>())
 {
-    constexpr std::array<glm::vec2, 3> Vertices{glm::vec2{-0.05F, -0.05F},
-                                                glm::vec2{0.05F, -0.05F},
-                                                glm::vec2{0.F, 0.1F}};
+    constexpr std::array Vertices = {0.0f, -0.05f, 0.05f, 0.05f, -0.05f, 0.05f};
+    m_VertexCount                 = 3;
+    m_VertexBuffer                = std::make_shared<luvk::Buffer>(Device, Memory);
+    m_VertexBuffer->CreateBuffer({.Size = sizeof(Vertices), .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT});
+    m_VertexBuffer->Upload(std::as_bytes(std::span{Vertices}));
 
-    constexpr std::array<std::uint16_t, 3> Indices{{0, 1, 2}};
+    m_ParticleBuffer->CreateBuffer({.Size = sizeof(Particle) * 2048,
+                                    .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                    .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
+                                    .PersistentlyMapped = true,
+                                    .Name = "ParticleBuffer"});
 
-    constexpr VkDescriptorSetLayoutBinding DescriptorBinding{0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT, nullptr};
-    constexpr VkDescriptorPoolSize         DescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1};
-
-    constexpr std::array Bindings{VkVertexInputBindingDescription{0, sizeof(glm::vec2), VK_VERTEX_INPUT_RATE_VERTEX},
-                                  VkVertexInputBindingDescription{1, sizeof(Particle), VK_VERTEX_INPUT_RATE_INSTANCE}};
-
-    constexpr std::array Attributes{VkVertexInputAttributeDescription{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
-                                    VkVertexInputAttributeDescription{1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Particle, Offset)},
-                                    VkVertexInputAttributeDescription{2, 1, VK_FORMAT_R32_SFLOAT, offsetof(Particle, Angle)},
-                                    VkVertexInputAttributeDescription{3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, Color)}};
-
-    const auto Set = std::make_shared<luvk::DescriptorSet>(Device, Pool, Memory);
-    Set->CreateLayout({.Bindings = std::array{DescriptorBinding}});
+    constexpr VkDescriptorSetLayoutBinding DescriptorBinding{0,
+                                                             VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                             1,
+                                                             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_COMPUTE_BIT,
+                                                             nullptr};
+    const auto Set = std::make_shared<luvk::DescriptorSet>(Device, Pool);
+    Set->CreateLayout(std::span{&DescriptorBinding, 1});
     Set->Allocate();
+    Set->UpdateStorageBuffer(0, m_ParticleBuffer->GetHandle(), m_ParticleBuffer->GetSize());
+
+    auto SetLayout = Set->GetLayout();
 
     const auto GraphicsPipeline = std::make_shared<luvk::Pipeline>(Device);
-    GraphicsPipeline->CreateGraphicsPipeline({.Extent = Swap->GetExtent(),
-                                              .ColorFormats = std::array{Swap->GetCreationArguments().Format},
-                                              .RenderPass = Swap->GetRenderPass(),
-                                              .Subpass = 0,
-                                              .VertexShader = luvk::CompileShader(g_TriangleVertexShader),
-                                              .FragmentShader = luvk::CompileShader(g_TriangleFragmentShader),
-                                              .SetLayouts = std::array{Set->GetLayout()},
-                                              .Bindings = Bindings,
-                                              .Attributes = Attributes,
-                                              .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                              .CullMode = VK_CULL_MODE_NONE});
+    VkFormat   Format           = Swap->GetFormat();
+
+    std::vector<VkVertexInputBindingDescription> Bindings = {{0, sizeof(float) * 2, VK_VERTEX_INPUT_RATE_VERTEX},
+                                                             {1, sizeof(Particle), VK_VERTEX_INPUT_RATE_INSTANCE}};
+
+    std::vector<VkVertexInputAttributeDescription> Attributes = {{0, 0, VK_FORMAT_R32G32_SFLOAT, 0},
+                                                                 {1, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(Particle, Offset)},
+                                                                 {2, 1, VK_FORMAT_R32_SFLOAT, offsetof(Particle, Angle)},
+                                                                 {3, 1, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(Particle, Color)}};
+
+    GraphicsPipeline->CreateGraphicsPipeline({.VertexShader     = luvk::CompileShader(g_TriangleVertexShader),
+                                              .FragmentShader   = luvk::CompileShader(g_TriangleFragmentShader),
+                                              .ColorFormats     = std::span{&Format, 1},
+                                              .Topology         = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                              .CullMode         = VK_CULL_MODE_NONE,
+                                              .SetLayouts       = std::span{&SetLayout, 1},
+                                              .VertexBindings   = Bindings,
+                                              .VertexAttributes = Attributes});
 
     m_ComputePipeline->CreateComputePipeline({.ComputeShader = luvk::CompileShader(g_TriangleComputeShader),
-                                              .SetLayouts = std::array{Set->GetLayout()},
-                                              .PushConstants = std::array{g_ConstantRange}});
-
-    m_ParticleBuffer->CreateBuffer({.Size = sizeof(Particle) * 1000,
-                                    .Usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                    .MemoryUsage = VMA_MEMORY_USAGE_CPU_TO_GPU,
-                                    .Name = "Particle VTX"});
-
-    Set->UpdateBuffer(m_ParticleBuffer->GetHandle(), m_ParticleBuffer->GetSize(), 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                                              .SetLayouts    = std::span{&SetLayout, 1},
+                                              .PushConstants = std::span{&g_ConstantRange, 1}});
 
     m_GraphicsMat->SetPipeline(GraphicsPipeline);
-    m_GraphicsMat->SetDescriptorSet(Set);
+    m_GraphicsMat->SetDescriptorSet(0, Set);
 
     m_ComputeMat->SetPipeline(m_ComputePipeline);
-    m_ComputeMat->SetDescriptorSet(Set);
-
-    SetMaterial(m_GraphicsMat);
-
-    for (std::int32_t CurrentFrame = 0; CurrentFrame < luvk::Constants::ImageCount; ++CurrentFrame)
-    {
-        UploadVertices(std::as_bytes(std::span{Vertices}), 3U, CurrentFrame);
-        UploadIndices(std::span{Indices}, CurrentFrame);
-    }
+    m_ComputeMat->SetDescriptorSet(0, Set);
 }
 
 void Triangle::Compute(const VkCommandBuffer Cmd) const
 {
-    if (std::empty(m_Particles))
+    if (m_Particles.empty())
     {
         return;
     }
 
     m_ComputeMat->Bind(Cmd);
 
-    vkCmdPushConstants(Cmd, m_ComputePipeline->GetPipelineLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &m_DeltaTime);
-    vkCmdDispatch(Cmd, (static_cast<uint32_t>(std::size(m_Particles)) + 63) / 64, 1, 1);
+    const VkDescriptorSet ComputeSet = m_ComputeMat->GetDescriptorSet(0)->GetHandle();
+    vkCmdBindDescriptorSets(Cmd, VK_PIPELINE_BIND_POINT_COMPUTE, m_ComputePipeline->GetLayout(), 0, 1, &ComputeSet, 0, nullptr);
 
-    const VkBufferMemoryBarrier Barrier{.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-                                        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
-                                        .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
-                                        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                        .buffer = m_ParticleBuffer->GetHandle(),
-                                        .offset = 0,
-                                        .size = VK_WHOLE_SIZE};
+    vkCmdPushConstants(Cmd, m_ComputePipeline->GetLayout(), VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(float), &m_DeltaTime);
 
-    vkCmdPipelineBarrier(Cmd, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, nullptr, 1, &Barrier, 0, nullptr);
+    const auto DispatchX = static_cast<std::uint32_t>(std::ceil(static_cast<float>(m_Particles.size()) / 64.0f));
+    vkCmdDispatch(Cmd, DispatchX, 1, 1);
 }
 
 void Triangle::Tick(const float DeltaTime)
@@ -171,35 +156,35 @@ void Triangle::Tick(const float DeltaTime)
     m_DeltaTime = DeltaTime;
 }
 
-void Triangle::Render(const VkCommandBuffer Cmd, const std::uint32_t CurrentFrame) const
+void Triangle::Render(const VkCommandBuffer Cmd) const
 {
+    if (m_Particles.empty())
+    {
+        return;
+    }
+
     m_GraphicsMat->Bind(Cmd);
 
-    if (!std::empty(m_VertexBuffers) && m_VertexBuffers[CurrentFrame])
-    {
-        const std::array<VkBuffer, 2U>         Buffers = {m_VertexBuffers[CurrentFrame]->GetHandle(), m_ParticleBuffer->GetHandle()};
-        constexpr std::array<VkDeviceSize, 2U> Offsets = {0, 0};
+    const VkBuffer         VtxBuf    = m_VertexBuffer->GetHandle();
+    const VkBuffer         InstBuf   = m_ParticleBuffer->GetHandle();
+    constexpr VkDeviceSize Offsets[] = {0};
 
-        vkCmdBindVertexBuffers(Cmd, 0, 2U, std::data(Buffers), std::data(Offsets));
-    }
+    vkCmdBindVertexBuffers(Cmd, 0, 1, &VtxBuf, Offsets);
+    vkCmdBindVertexBuffers(Cmd, 1, 1, &InstBuf, Offsets);
 
-    if (!std::empty(m_IndexBuffers) && m_IndexBuffers[CurrentFrame])
-    {
-        vkCmdBindIndexBuffer(Cmd, m_IndexBuffers[CurrentFrame]->GetHandle(), 0, VK_INDEX_TYPE_UINT16);
-        vkCmdDrawIndexed(Cmd, m_IndexCount, m_InstanceCount, 0, 0, 0);
-    }
+    vkCmdDraw(Cmd, 3, static_cast<std::uint32_t>(m_Particles.size()), 0, 0);
 }
 
-void Triangle::AddInstance(glm::vec2 const& Position)
+void Triangle::AddInstance([[maybe_unused]] glm::vec2 const& Position)
 {
-    static std::mt19937                   Generator{std::random_device{}()};
-    static std::uniform_real_distribution Distribution(0.F, 1.F);
+    std::random_device             RandomDevice;
+    std::mt19937                   RandomGenerator(RandomDevice());
+    std::uniform_real_distribution Distribution(0.0f, 1.0f);
 
-    m_Particles.push_back(Particle{.Offset = Position,
-                                   .Angle = Distribution(Generator) * glm::two_pi<float>(),
-                                   .Color = {Distribution(Generator), Distribution(Generator), Distribution(Generator), 1.F},
-                                   .Velocity = {0.F, 0.F}});
+    m_Particles.push_back(Particle{.Offset   = Position,
+                                   .Angle    = Distribution(RandomGenerator) * 3.14f * 2.0f,
+                                   .Color    = glm::vec4(Distribution(RandomGenerator), Distribution(RandomGenerator), Distribution(RandomGenerator), 1.0f),
+                                   .Velocity = glm::vec2(0.0f)});
 
     m_ParticleBuffer->Upload(std::as_bytes(std::span{m_Particles}));
-    m_InstanceCount = static_cast<uint32_t>(std::size(m_Particles));
 }

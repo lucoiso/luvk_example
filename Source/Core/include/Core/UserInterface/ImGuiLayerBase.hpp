@@ -1,5 +1,5 @@
 /*
- * Author: Lucas Vilas-Boas
+* Author: Lucas Vilas-Boas
  * Year: 2025
  * Repo: https://github.com/lucoiso/luvk_example
  */
@@ -35,7 +35,8 @@ namespace Core
         virtual void Draw();
         virtual void PushStyle() const;
 
-        void Render(VkCommandBuffer Cmd, std::uint32_t CurrentFrame) const;
+        void Render(VkCommandBuffer Cmd) const;
+        void RenderPlatformWindows() const;
 
         [[nodiscard]] bool ProcessEvent(const SDL_Event& Event) const;
     };

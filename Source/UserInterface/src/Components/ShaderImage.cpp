@@ -5,14 +5,18 @@
  */
 
 #include "UserInterface/Components/ShaderImage.hpp"
-#include <array>
+#include <luvk/Interfaces/IServiceLocator.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
+#include <luvk/Modules/CommandPool.hpp>
+#include <luvk/Modules/DescriptorPool.hpp>
 #include <luvk/Modules/Device.hpp>
+#include <luvk/Modules/Memory.hpp>
+#include <luvk/Modules/Renderer.hpp>
 #include <luvk/Resources/DescriptorSet.hpp>
 #include <luvk/Resources/Image.hpp>
 #include <luvk/Resources/Pipeline.hpp>
 #include <luvk/Resources/Sampler.hpp>
-#include <luvk/Types/Texture.hpp>
+#include <luvk/Resources/Texture.hpp>
 
 using namespace UserInterface;
 
@@ -142,13 +146,12 @@ void main(
 }
 )";
 
-ShaderImage::ShaderImage(std::shared_ptr<luvk::Device>         Device,
-                         std::shared_ptr<luvk::DescriptorPool> Pool,
-                         std::shared_ptr<luvk::Memory>         Memory)
-    : m_Device(std::move(Device)),
-      m_Pool(std::move(Pool)),
-      m_Memory(std::move(Memory))
+ShaderImage::ShaderImage(const std::shared_ptr<luvk::Renderer>& Renderer)
+    : m_Renderer(Renderer)
 {
+    m_Device = Renderer->GetModule<luvk::Device>();
+    m_Pool   = Renderer->GetModule<luvk::DescriptorPool>();
+    m_Memory = Renderer->GetModule<luvk::Memory>();
     Initialize();
 }
 
@@ -156,307 +159,195 @@ ShaderImage::~ShaderImage()
 {
     if (m_Device)
     {
-        const VkDevice LogicalDevice = m_Device->GetLogicalDevice();
-        if (m_Framebuffer != VK_NULL_HANDLE)
-        {
-            vkDestroyFramebuffer(LogicalDevice, m_Framebuffer, nullptr);
-        }
-        if (m_RenderPass != VK_NULL_HANDLE)
-        {
-            vkDestroyRenderPass(LogicalDevice, m_RenderPass, nullptr);
-        }
+        m_Device->WaitIdle();
     }
 }
 
-void ShaderImage::Update(const VkCommandBuffer Cmd, const float DeltaTime)
-{
-    if (!m_Pipeline || !m_Texture)
-    {
-        return;
-    }
-
-    const VkImageMemoryBarrier BarrierToAttachment{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                                   .srcAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                                                   .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                   .oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                   .newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .image = m_Texture->GetImage()->GetHandle(),
-                                                   .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
-
-    vkCmdPipelineBarrier(Cmd,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         0,
-                         0,
-                         nullptr,
-                         0,
-                         nullptr,
-                         1,
-                         &BarrierToAttachment);
-
-    m_TotalTime += DeltaTime;
-
-    constexpr VkClearValue      Clear{.color = {0.f, 0.f, 0.f, 1.f}};
-    const VkRenderPassBeginInfo Info{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-                                     .renderPass = m_RenderPass,
-                                     .framebuffer = m_Framebuffer,
-                                     .renderArea = {{0, 0}, {256, 256}},
-                                     .clearValueCount = 1,
-                                     .pClearValues = &Clear};
-
-    vkCmdBeginRenderPass(Cmd, &Info, VK_SUBPASS_CONTENTS_INLINE);
-
-    constexpr VkViewport VP{0, 0, 256, 256, 0, 1};
-    constexpr VkRect2D   Sc{{0, 0}, {256, 256}};
-
-    vkCmdSetViewport(Cmd, 0, 1, &VP);
-    vkCmdSetScissor(Cmd, 0, 1, &Sc);
-    vkCmdBindPipeline(Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline->GetPipeline());
-
-    vkCmdPushConstants(Cmd,
-                       m_Pipeline->GetPipelineLayout(),
-                       VK_SHADER_STAGE_FRAGMENT_BIT,
-                       0,
-                       sizeof(float),
-                       &m_TotalTime);
-
-    vkCmdDraw(Cmd, 3, 1, 0, 0);
-
-    vkCmdEndRenderPass(Cmd);
-
-    const VkImageMemoryBarrier BarrierToShaderRead{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                                   .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                   .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                                                   .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                   .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .image = m_Texture->GetImage()->GetHandle(),
-                                                   .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
-
-    vkCmdPipelineBarrier(Cmd,
-                         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                         0,
-                         0,
-                         nullptr,
-                         0,
-                         nullptr,
-                         1,
-                         &BarrierToShaderRead);
-}
-
-bool ShaderImage::Compile(const std::string& Source, std::string& OutError)
-{
-    const auto [Result, Data, Error] = luvk::CompileShaderSafe(Source, "spirv_1_4");
-
-    if (Result)
-    {
-        m_TotalTime = 0.f;
-        CreatePipeline(Data);
-        return true;
-    }
-
-    OutError = Error;
-    return false;
-}
-
-void ShaderImage::Reset()
-{
-    std::string           DummyError;
-    [[maybe_unused]] auto _ = Compile(g_ShaderImageDefaultFrag, DummyError);
-}
-
-VkDescriptorSet ShaderImage::GetDescriptorSet() const
-{
-    return m_DescriptorSet
-               ? m_DescriptorSet->GetHandle()
-               : VK_NULL_HANDLE;
-}
-
-std::string ShaderImage::GetDefaultSource()
+std::string_view ShaderImage::GetDefaultSource()
 {
     return g_ShaderImageDefaultFrag;
 }
 
 void ShaderImage::Initialize()
 {
-    m_CachedVertexShader = luvk::CompileShader(g_ShaderImageVert, "spirv_1_4");
+    auto Image = std::make_shared<luvk::Image>(m_Device, m_Memory);
+    Image->CreateImage({.Extent      = {256, 256, 1},
+                        .Format      = VK_FORMAT_R8G8B8A8_UNORM,
+                        .Usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                        .MemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY,
+                        .Name        = "ShaderImageTarget"});
 
-    auto PreviewImage = std::make_shared<luvk::Image>(m_Device, m_Memory);
-    PreviewImage->CreateImage({.Extent = {256, 256, 1},
-                               .Format = VK_FORMAT_R8G8B8A8_UNORM,
-                               .Usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                               .MemoryUsage = VMA_MEMORY_USAGE_GPU_ONLY});
+    {
+        const auto CmdPool = m_Renderer.lock()->GetModule<luvk::CommandPool>();
+        const auto Buffers = CmdPool->Allocate(1);
 
-    auto PreviewSampler = std::make_shared<luvk::Sampler>(m_Device);
-    PreviewSampler->CreateSampler({});
+        constexpr VkCommandBufferBeginInfo BeginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                                     .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
+        vkBeginCommandBuffer(Buffers[0], &BeginInfo);
 
-    m_Texture = std::make_shared<luvk::Texture>(PreviewImage, PreviewSampler);
+        VkImageMemoryBarrier2 Barrier{.sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                                      .srcStageMask     = VK_PIPELINE_STAGE_2_NONE,
+                                      .srcAccessMask    = VK_ACCESS_2_NONE,
+                                      .dstStageMask     = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                                      .dstAccessMask    = VK_ACCESS_2_SHADER_READ_BIT,
+                                      .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+                                      .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      .image            = Image->GetHandle(),
+                                      .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
 
-    m_DescriptorSet = std::make_shared<luvk::DescriptorSet>(m_Device, m_Pool, m_Memory);
+        const VkDependencyInfo DepInfo{.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &Barrier};
+        vkCmdPipelineBarrier2(Buffers[0], &DepInfo);
 
-    constexpr VkDescriptorSetLayoutBinding Binding{0,
-                                                   VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                                                   1,
-                                                   VK_SHADER_STAGE_FRAGMENT_BIT,
-                                                   nullptr};
+        vkEndCommandBuffer(Buffers[0]);
 
-    m_DescriptorSet->CreateLayout({.Bindings = std::array{Binding}});
+        VkCommandBufferSubmitInfo BufferInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO, .commandBuffer = Buffers[0]};
+        const VkSubmitInfo2       Submit{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO_2, .commandBufferInfoCount = 1, .pCommandBufferInfos = &BufferInfo};
+
+        vkQueueSubmit2(m_Device->GetQueue(VK_QUEUE_GRAPHICS_BIT), 1, &Submit, VK_NULL_HANDLE);
+        m_Device->WaitQueue(VK_QUEUE_GRAPHICS_BIT);
+        CmdPool->Free(Buffers);
+    }
+
+    auto Sampler = std::make_shared<luvk::Sampler>(m_Device);
+    Sampler->CreateSampler({.Filter = VK_FILTER_LINEAR, .AddressMode = VK_SAMPLER_ADDRESS_MODE_REPEAT});
+
+    m_Texture = std::make_shared<luvk::Texture>(Image, Sampler, "ShaderImageTex");
+
+    m_CachedVertexShader = luvk::CompileShader(g_ShaderImageVert);
+
+    VkDescriptorSetLayoutBinding Binding{.binding         = 0,
+                                         .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                         .descriptorCount = 1,
+                                         .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT};
+
+    m_DescriptorSet = std::make_shared<luvk::DescriptorSet>(m_Device, m_Pool);
+    m_DescriptorSet->CreateLayout(std::span{&Binding, 1});
     m_DescriptorSet->Allocate();
 
-    m_DescriptorSet->UpdateImage(m_Texture->GetImage()->GetView(),
-                                 m_Texture->GetSampler()->GetHandle(),
-                                 0,
-                                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+    VkDescriptorImageInfo      ImgInfo{.sampler = Sampler->GetHandle(), .imageView = Image->GetView(), .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    const VkWriteDescriptorSet Write{.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                     .dstSet          = m_DescriptorSet->GetHandle(),
+                                     .dstBinding      = 0,
+                                     .descriptorCount = 1,
+                                     .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                     .pImageInfo      = &ImgInfo};
 
-    constexpr VkAttachmentDescription Attachment{.format = VK_FORMAT_R8G8B8A8_UNORM,
-                                                 .samples = VK_SAMPLE_COUNT_1_BIT,
-                                                 .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                 .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                                                 .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                 .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                 .initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                                 .finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+    vkUpdateDescriptorSets(m_Device->GetLogicalDevice(), 1, &Write, 0, nullptr);
 
-    constexpr VkAttachmentReference Ref{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
-
-    const VkSubpassDescription Subpass{.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                       .colorAttachmentCount = 1,
-                                       .pColorAttachments = &Ref};
-
-    constexpr std::array Dependencies{VkSubpassDependency{.srcSubpass = VK_SUBPASS_EXTERNAL,
-                                                          .dstSubpass = 0,
-                                                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT},
-                                      VkSubpassDependency{.srcSubpass = 0,
-                                                          .dstSubpass = VK_SUBPASS_EXTERNAL,
-                                                          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                          .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                                                          .dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT}};
-
-    const VkRenderPassCreateInfo RPInfo{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-                                        .attachmentCount = 1,
-                                        .pAttachments = &Attachment,
-                                        .subpassCount = 1,
-                                        .pSubpasses = &Subpass,
-                                        .dependencyCount = static_cast<uint32_t>(std::size(Dependencies)),
-                                        .pDependencies = std::data(Dependencies)};
-
-    vkCreateRenderPass(m_Device->GetLogicalDevice(), &RPInfo, nullptr, &m_RenderPass);
-
-    const VkImageView             View = m_Texture->GetImage()->GetView();
-    const VkFramebufferCreateInfo FBInfo{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                                         .renderPass = m_RenderPass,
-                                         .attachmentCount = 1,
-                                         .pAttachments = &View,
-                                         .width = 256,
-                                         .height = 256,
-                                         .layers = 1};
-
-    vkCreateFramebuffer(m_Device->GetLogicalDevice(), &FBInfo, nullptr, &m_Framebuffer);
-    TransitionLayout();
-    Reset();
+    m_CachedDefaultFragShader = luvk::CompileShader(g_ShaderImageDefaultFrag);
+    CreatePipeline(m_CachedDefaultFragShader);
 }
 
 void ShaderImage::CreatePipeline(const std::vector<std::uint32_t>& FragSpirv)
 {
-    if (m_Pipeline)
-    {
-        m_Device->WaitIdle();
-        m_Pipeline.reset();
-    }
+    m_Pipeline                      = std::make_shared<luvk::Pipeline>(m_Device);
+    VkFormat            ColorFormat = VK_FORMAT_R8G8B8A8_UNORM;
+    VkPushConstantRange PCRange{VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float)};
 
-    m_Pipeline                        = std::make_shared<luvk::Pipeline>(m_Device);
-    constexpr std::array ColorFormats = {VK_FORMAT_R8G8B8A8_UNORM};
-
-    constexpr VkPushConstantRange PCRange{.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
-                                          .offset = 0,
-                                          .size = sizeof(float)};
-
-    m_Pipeline->CreateGraphicsPipeline({.Extent = {256, 256},
-                                        .ColorFormats = ColorFormats,
-                                        .RenderPass = m_RenderPass,
-                                        .Subpass = 0,
-                                        .VertexShader = m_CachedVertexShader,
+    m_Pipeline->CreateGraphicsPipeline({.VertexShader   = m_CachedVertexShader,
                                         .FragmentShader = FragSpirv,
-                                        .PushConstants = std::array{PCRange},
-                                        .Topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                                        .CullMode = VK_CULL_MODE_NONE,
-                                        .EnableDepthOp = false});
+                                        .ColorFormats   = std::span{&ColorFormat, 1},
+                                        .Topology       = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                                        .CullMode       = VK_CULL_MODE_NONE,
+                                        .PushConstants  = std::span{&PCRange, 1}});
 }
 
-void ShaderImage::TransitionLayout() const
+bool ShaderImage::Compile(const std::string& Source, std::string& OutError)
 {
-    constexpr VkImageLayout FromLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    constexpr VkImageLayout ToLayout   = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    const luvk::CompilationResult Result = luvk::CompileShaderSafe(Source);
+    if (!Result.Result)
+    {
+        OutError = Result.Error;
+        return false;
+    }
 
-    const VkDevice      LogicalDevice = m_Device->GetLogicalDevice();
-    const std::uint32_t QueueFamily   = m_Device->FindQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT).value();
-    const VkQueue       Queue         = m_Device->GetQueue(QueueFamily);
+    m_Pipeline.reset();
+    CreatePipeline(Result.Data);
+    OutError = "Compiled Successfully";
 
-    const VkCommandPoolCreateInfo PoolInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                                           .pNext = nullptr,
-                                           .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT,
-                                           .queueFamilyIndex = QueueFamily};
+    return true;
+}
 
-    VkCommandPool Pool{VK_NULL_HANDLE};
-    vkCreateCommandPool(LogicalDevice, &PoolInfo, nullptr, &Pool);
+void ShaderImage::Reset()
+{
+    m_TotalTime = 0.0f;
+    m_Pipeline.reset();
 
-    const VkCommandBufferAllocateInfo AllocationInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                                                     .pNext = nullptr,
-                                                     .commandPool = Pool,
-                                                     .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                                                     .commandBufferCount = 1};
+    CreatePipeline(m_CachedDefaultFragShader);
+}
 
-    VkCommandBuffer CommandBuffer{VK_NULL_HANDLE};
-    vkAllocateCommandBuffers(LogicalDevice, &AllocationInfo, &CommandBuffer);
+void ShaderImage::RecordCommands(const VkCommandBuffer Cmd) const
+{
+    if (!m_Pipeline || !m_Texture)
+    {
+        return;
+    }
 
-    constexpr VkCommandBufferBeginInfo CommandBufferBeginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                                              .pNext = nullptr,
-                                                              .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                                                              .pInheritanceInfo = nullptr};
-    vkBeginCommandBuffer(CommandBuffer, &CommandBufferBeginInfo);
+    VkImage     Image = m_Texture->GetImage()->GetHandle();
+    VkImageView View  = m_Texture->GetImage()->GetView();
 
-    VkPipelineStageFlags           SrcStage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-    constexpr VkPipelineStageFlags DstStage  = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    VkAccessFlags                  SrcAccess = 0;
-    constexpr VkAccessFlags        DstAccess = VK_ACCESS_SHADER_READ_BIT;
+    const VkImageMemoryBarrier2 ToAtt{.sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                                      .srcStageMask     = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                                      .srcAccessMask    = VK_ACCESS_2_SHADER_READ_BIT,
+                                      .dstStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                      .dstAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                      .oldLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                      .newLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                      .image            = Image,
+                                      .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
 
-    const VkImageMemoryBarrier Barrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                       .pNext = nullptr,
-                                       .srcAccessMask = SrcAccess,
-                                       .dstAccessMask = DstAccess,
-                                       .oldLayout = FromLayout,
-                                       .newLayout = ToLayout,
-                                       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                       .image = m_Texture->GetImage()->GetHandle(),
+    const VkDependencyInfo DepAtt{.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &ToAtt};
+    vkCmdPipelineBarrier2(Cmd, &DepAtt);
+
+    const VkRenderingAttachmentInfo ColorAtt{.sType       = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                                             .imageView   = View,
+                                             .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                             .loadOp      = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                             .storeOp     = VK_ATTACHMENT_STORE_OP_STORE,
+                                             .clearValue  = {.color = {0.f, 0.f, 0.f, 1.f}}};
+
+    const VkRenderingInfo RenderInfo{.sType                = VK_STRUCTURE_TYPE_RENDERING_INFO,
+                                     .renderArea           = {{0, 0}, {256, 256}},
+                                     .layerCount           = 1,
+                                     .colorAttachmentCount = 1,
+                                     .pColorAttachments    = &ColorAtt};
+
+    vkCmdBeginRendering(Cmd, &RenderInfo);
+
+    VkViewport VP{0, 0, 256, 256, 0, 1};
+    VkRect2D   Sc{{0, 0}, {256, 256}};
+    vkCmdSetViewport(Cmd, 0, 1, &VP);
+    vkCmdSetScissor(Cmd, 0, 1, &Sc);
+
+    vkCmdBindPipeline(Cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline->GetHandle());
+    vkCmdPushConstants(Cmd, m_Pipeline->GetLayout(), VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(float), &m_TotalTime);
+    vkCmdDraw(Cmd, 3, 1, 0, 0);
+
+    vkCmdEndRendering(Cmd);
+
+    const VkImageMemoryBarrier2 ToRead{.sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                                       .srcStageMask     = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                       .srcAccessMask    = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                                       .dstStageMask     = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                                       .dstAccessMask    = VK_ACCESS_2_SHADER_READ_BIT,
+                                       .oldLayout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                                       .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                       .image            = Image,
                                        .subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1}};
 
-    vkCmdPipelineBarrier(CommandBuffer, SrcStage, DstStage, 0, 0, nullptr, 0, nullptr, 1, &Barrier);
-    vkEndCommandBuffer(CommandBuffer);
+    const VkDependencyInfo DepRead{.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO, .imageMemoryBarrierCount = 1, .pImageMemoryBarriers = &ToRead};
+    vkCmdPipelineBarrier2(Cmd, &DepRead);
+}
 
-    const VkSubmitInfo QueueSubmitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                       .pNext = nullptr,
-                                       .waitSemaphoreCount = 0,
-                                       .pWaitSemaphores = nullptr,
-                                       .pWaitDstStageMask = nullptr,
-                                       .commandBufferCount = 1,
-                                       .pCommandBuffers = &CommandBuffer,
-                                       .signalSemaphoreCount = 0,
-                                       .pSignalSemaphores = nullptr};
+void ShaderImage::UpdateImmediate(const float DeltaTime)
+{
+    m_TotalTime += DeltaTime;
 
-    vkQueueSubmit(Queue, 1, &QueueSubmitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(Queue);
-
-    vkFreeCommandBuffers(LogicalDevice, Pool, 1, &CommandBuffer);
-    vkDestroyCommandPool(LogicalDevice, Pool, nullptr);
+    if (auto RendererPtr = m_Renderer.lock())
+    {
+        m_Device->SubmitImmediate([this](const VkCommandBuffer Cmd)
+        {
+            RecordCommands(Cmd);
+        });
+    }
 }

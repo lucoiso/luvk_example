@@ -1,5 +1,5 @@
 /*
- * Author: Lucas Vilas-Boas
+* Author: Lucas Vilas-Boas
  * Year: 2025
  * Repo: https://github.com/lucoiso/luvk_example
  */
@@ -12,17 +12,11 @@
 
 namespace luvk
 {
-    class DescriptorPool;
-    class Device;
-    class Memory;
+    class Renderer;
     class SwapChain;
-    class Draw;
     class CommandPool;
     class Synchronization;
-    class DescriptorSet;
-    class Pipeline;
-    class Mesh;
-    class Texture;
+    class Draw;
 }
 
 namespace Core
@@ -31,53 +25,36 @@ namespace Core
 
     struct CORE_API ViewportData
     {
-        std::int32_t                           ImageIndex{-1};
-        VkSurfaceKHR                           Surface{VK_NULL_HANDLE};
-        std::shared_ptr<luvk::SwapChain>       SwapChain{nullptr};
-        std::shared_ptr<luvk::CommandPool>     CommandPool{nullptr};
-        std::shared_ptr<luvk::Synchronization> Sync{nullptr};
-        std::shared_ptr<luvk::Draw>            Draw{nullptr};
-        std::shared_ptr<ImGuiMesh>             Mesh{nullptr};
+        std::int32_t                    ImageIndex{-1};
+        VkSurfaceKHR                    Surface{VK_NULL_HANDLE};
+        std::shared_ptr<ImGuiMesh>      Mesh{nullptr};
+        std::unique_ptr<luvk::Renderer> Renderer{nullptr};
+        luvk::EventHandle               SurfaceDeleteHandle;
+
+        ~ViewportData();
     };
 
     class CORE_API ImGuiBackendVulkan
     {
-        VkInstance                       m_Instance{VK_NULL_HANDLE};
-        std::shared_ptr<luvk::Device>    m_Device{};
-        std::shared_ptr<luvk::SwapChain> m_SwapChain{};
-        std::shared_ptr<luvk::Memory>    m_Memory{};
-        std::shared_ptr<ImGuiMesh>       m_Mesh{};
+        luvk::Renderer*            m_Renderer;
+        std::shared_ptr<ImGuiMesh> m_Mesh{};
 
     public:
         ImGuiBackendVulkan() = delete;
-        explicit ImGuiBackendVulkan(VkInstance                                   Instance,
-                                    const std::shared_ptr<luvk::Device>&         Device,
-                                    const std::shared_ptr<luvk::DescriptorPool>& Pool,
-                                    const std::shared_ptr<luvk::SwapChain>&      Swap,
-                                    const std::shared_ptr<luvk::Memory>&         Memory);
+        explicit ImGuiBackendVulkan(luvk::Renderer* Renderer);
         ~ImGuiBackendVulkan();
 
         void NewFrame() const;
-        void Render(VkCommandBuffer Cmd, std::uint32_t CurrentFrame) const;
+        void Render(VkCommandBuffer Cmd) const;
 
-        [[nodiscard]] VkInstance GetInstance() const
+        [[nodiscard]] luvk::Renderer* GetRenderer() const
         {
-            return m_Instance;
+            return m_Renderer;
         }
 
         [[nodiscard]] std::shared_ptr<ImGuiMesh> GetMesh() const noexcept
         {
             return m_Mesh;
-        }
-
-        [[nodiscard]] std::shared_ptr<luvk::Device> GetDevice() const noexcept
-        {
-            return m_Device;
-        }
-
-        [[nodiscard]] std::shared_ptr<luvk::Memory> GetMemory() const noexcept
-        {
-            return m_Memory;
         }
 
     private:

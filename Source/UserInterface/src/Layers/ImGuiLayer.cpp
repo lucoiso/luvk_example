@@ -12,12 +12,10 @@
 
 using namespace UserInterface;
 
-ImGuiLayer::ImGuiLayer(SDL_Window*                            Window,
-                       std::shared_ptr<luvk::Renderer> const& Renderer)
+ImGuiLayer::ImGuiLayer(SDL_Window* Window, std::shared_ptr<luvk::Renderer> const& Renderer)
     : ImGuiLayerBase(Window, Renderer)
 {
-    const luvk::RenderModules& Modules = Renderer->GetModules();
-    InitializeResources(Modules.DeviceModule, Modules.DescriptorPoolModule, Modules.MemoryModule);
+    InitializeResources(Renderer);
 }
 
 ImGuiLayer::~ImGuiLayer()
@@ -39,9 +37,9 @@ void ImGuiLayer::Draw()
         ImGui::DockBuilderAddNode(DockID, ImGuiDockNodeFlags_PassthruCentralNode | ImGuiDockNodeFlags_DockSpace);
         ImGui::DockBuilderSetNodeSize(DockID, ImGui::GetMainViewport()->Size);
 
-        ImGuiID CentralID = DockID;
-        ImGuiID LeftID    = ImGui::DockBuilderSplitNode(CentralID, ImGuiDir_Left, 0.30f, nullptr, &CentralID);
-        ImGuiID DownID    = ImGui::DockBuilderSplitNode(LeftID, ImGuiDir_Down, 0.35f, nullptr, &LeftID);
+        ImGuiID       CentralID = DockID;
+        ImGuiID       LeftID    = ImGui::DockBuilderSplitNode(CentralID, ImGuiDir_Left, 0.30f, nullptr, &CentralID);
+        const ImGuiID DownID    = ImGui::DockBuilderSplitNode(LeftID, ImGuiDir_Down, 0.35f, nullptr, &LeftID);
 
         ImGui::DockBuilderDockWindow("Shader Editor", LeftID);
         ImGui::DockBuilderDockWindow("Shader Preview", DownID);
@@ -52,16 +50,35 @@ void ImGuiLayer::Draw()
     DrawTexture();
 }
 
-void ImGuiLayer::UpdatePreview(const VkCommandBuffer Cmd) const
+void ImGuiLayer::RecordCommands(const VkCommandBuffer Cmd) const
 {
-    m_ShaderImage->Update(Cmd, Application::GetInstance()->GetDeltaTime());
+    m_ShaderImage->RecordCommands(Cmd);
 }
 
-void ImGuiLayer::InitializeResources(std::shared_ptr<luvk::Device> const&         Device,
-                                     std::shared_ptr<luvk::DescriptorPool> const& Pool,
-                                     std::shared_ptr<luvk::Memory> const&         Memory)
+void ImGuiLayer::UpdatePreviewImmediate(const float DeltaTime) const
 {
-    m_ShaderImage = std::make_unique<ShaderImage>(Device, Pool, Memory);
+    m_ShaderImage->UpdateImmediate(DeltaTime);
+}
+
+void ImGuiLayer::ExecutePendingCompile()
+{
+    if (!m_CompileRequested)
+    {
+        return;
+    }
+
+    m_VulkanBackend->GetRenderer()->SetPaused(true);
+    m_VulkanBackend->GetRenderer()->GetModule<luvk::Device>()->WaitIdle();
+
+    m_CompileSuccess = m_ShaderImage->Compile(m_ShaderCode, m_StatusMessage);
+
+    m_CompileRequested = false;
+    m_VulkanBackend->GetRenderer()->SetPaused(false);
+}
+
+void ImGuiLayer::InitializeResources(const std::shared_ptr<luvk::Renderer>& Renderer)
+{
+    m_ShaderImage = std::make_unique<ShaderImage>(Renderer);
     m_ShaderCode  = ShaderImage::GetDefaultSource();
     m_ShaderCode.reserve(4096);
 }
@@ -72,7 +89,7 @@ void ImGuiLayer::DrawEditor()
 
     if (ImGui::Button("Compile"))
     {
-        CompileShader();
+        m_CompileRequested = true;
     }
 
     ImGui::SameLine();
@@ -82,7 +99,7 @@ void ImGuiLayer::DrawEditor()
         m_ShaderCode     = ShaderImage::GetDefaultSource();
         m_CompileSuccess = true;
         m_StatusMessage  = "Ready";
-        m_ShaderImage->Reset();
+        m_CompileRequested = true;
     }
 
     if (!m_CompileSuccess)
@@ -91,7 +108,7 @@ void ImGuiLayer::DrawEditor()
     }
 
     ImGui::InputTextMultiline("##source",
-                              m_ShaderCode.data(),
+                              std::data(m_ShaderCode),
                               m_ShaderCode.capacity() + 1,
                               ImGui::GetContentRegionAvail(),
                               ImGuiInputTextFlags_CallbackResize | ImGuiInputTextFlags_AllowTabInput,
@@ -115,11 +132,6 @@ void ImGuiLayer::DrawTexture() const
     }
 
     ImGui::End();
-}
-
-void ImGuiLayer::CompileShader()
-{
-    m_CompileSuccess = m_ShaderImage->Compile(m_ShaderCode, m_StatusMessage);
 }
 
 int ImGuiLayer::InputTextCallback(ImGuiInputTextCallbackData* Data)

@@ -1,5 +1,5 @@
 /*
- * Author: Lucas Vilas-Boas
+* Author: Lucas Vilas-Boas
  * Year: 2025
  * Repo: https://github.com/lucoiso/luvk_example
  */
@@ -16,7 +16,7 @@
 #ifdef WIN32
 #include <Windows.h>
 
-int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+std::int32_t WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, std::int32_t)
 #else
 std::int32_t main()
 #endif
@@ -33,14 +33,13 @@ std::int32_t main()
                 while (AppInstance->Render());
 
                 AppInstance->Shutdown();
-
                 return EXIT_SUCCESS;
             }
         }
     }
     catch (const std::exception& Exception)
     {
-        std::printf("Error: %s\n", Exception.what());
+        std::fprintf(stderr, "Error: %s\n", Exception.what());
     }
 
     return EXIT_FAILURE;

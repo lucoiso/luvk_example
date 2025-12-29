@@ -1,13 +1,13 @@
 /*
- * Author: Lucas Vilas-Boas
+* Author: Lucas Vilas-Boas
  * Year: 2025
  * Repo: https://github.com/lucoiso/luvk_example
  */
 
 #pragma once
 
-#include <Core/Application/ApplicationBase.hpp>
 #include <volk.h>
+#include <Core/Application/ApplicationBase.hpp>
 
 namespace UserInterface
 {
@@ -33,8 +33,9 @@ namespace UserInterface
 
         static std::shared_ptr<Application> GetInstance();
 
-        bool Initialize() override;
-        void Shutdown() override;
+        bool               Initialize() override;
+        void               Shutdown() override;
+        [[nodiscard]] bool Render() override;
 
         [[nodiscard]] std::shared_ptr<Camera> GetCamera() const noexcept
         {
@@ -45,10 +46,8 @@ namespace UserInterface
         void CreateScene();
 
     protected:
-        bool OnBeginFrame(VkCommandBuffer CommandBuffer) override;
+        bool OnBeginFrame(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) override;
         bool OnRecordFrame(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) override;
         void UserEventCallback(const SDL_Event& Event) override;
-        void SetupDeviceExtensions() const override;
-        [[nodiscard]] void* GetDeviceFeatureChain() const override;
     };
 }

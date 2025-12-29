@@ -45,7 +45,7 @@ void EventHandle::Unbind()
 {
     if (m_Id != 0)
     {
-        if (const auto Ptr = m_Manager.lock())
+        if (const std::shared_ptr<InputManager> Ptr = m_Manager.lock())
         {
             Ptr->UnbindEvent(m_Type, m_Id);
         }
@@ -61,10 +61,10 @@ EventHandle InputManager::BindEvent(const std::uint32_t Type, std::function<void
 {
     auto              [Iterator, Inserted] = m_Bindings.try_emplace(Type, EventCallbacks{});
     const std::size_t Id                   = ++m_NextCallbackId;
-    Iterator->second.emplace_back(CallbackData{Id,
-                                               std::move(Callback)});
 
-    return { shared_from_this(), Type, Id };
+    Iterator->second.emplace_back(CallbackData{Id, std::move(Callback)});
+
+    return {shared_from_this(), Type, Id};
 }
 
 void InputManager::UnbindEvent(const std::uint32_t Type, const std::size_t Id)
@@ -86,20 +86,15 @@ void InputManager::ProcessEvents()
 
     while (SDL_PollEvent(&Event))
     {
-        if (Event.type >= SDL_EVENT_WINDOW_FIRST && Event.type <= SDL_EVENT_WINDOW_LAST)
-        {
-            if (Event.window.windowID != m_WindowID)
-            {
-                continue;
-            }
-        }
-
         switch (Event.type)
         {
             case SDL_EVENT_QUIT:
             case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
             {
-                m_Running = false;
+                if (Event.window.windowID == m_WindowID)
+                {
+                    m_Running = false;
+                }
                 break;
             }
             case SDL_EVENT_KEY_DOWN:

@@ -7,15 +7,14 @@
 #pragma once
 
 #include <imgui.h>
-#include <luvk/Types/Mesh.hpp>
+#include <vector>
+#include <luvk/Resources/Mesh.hpp>
 
 namespace luvk
 {
     class Device;
     class Memory;
     class DescriptorPool;
-    class SwapChain;
-    class Material;
 }
 
 namespace Core
@@ -28,16 +27,11 @@ namespace Core
 
     public:
         ImGuiMesh() = delete;
-        explicit ImGuiMesh(const std::shared_ptr<luvk::Device>&         Device,
-                           const std::shared_ptr<luvk::Memory>&         Memory,
-                           const std::shared_ptr<luvk::DescriptorPool>& Pool,
-                           const std::shared_ptr<luvk::SwapChain>&      Swap);
 
-        explicit ImGuiMesh(const std::shared_ptr<luvk::Device>&   Device,
-                           const std::shared_ptr<luvk::Memory>&   Memory,
-                           const std::shared_ptr<luvk::Material>& Font);
+        explicit ImGuiMesh(luvk::Device* Device, luvk::Memory* Memory, luvk::DescriptorPool* Pool);
+        explicit ImGuiMesh(luvk::Device* Device, luvk::Memory* Memory, const std::shared_ptr<luvk::Material>& FontMaterial);
 
-        void UpdateBuffers(const ImDrawData* DrawData, std::uint32_t CurrentFrame);
-        void Render(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) const override;
+        void UpdateBuffers(const ImDrawData* DrawData);
+        void Render(VkCommandBuffer CommandBuffer) const override;
     };
 }

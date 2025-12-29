@@ -29,4 +29,4 @@ namespace UserInterface
         void                    Update(float DeltaTime);
         [[nodiscard]] glm::mat4 GetViewMatrix() const;
     };
-} // namespace UserInterface
+}

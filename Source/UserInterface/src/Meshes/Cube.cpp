@@ -8,9 +8,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <luvk/Libraries/ShaderCompiler.hpp>
 #include <luvk/Modules/SwapChain.hpp>
-#include <luvk/Resources/DescriptorSet.hpp>
+#include <luvk/Resources/Material.hpp>
 #include <luvk/Resources/Pipeline.hpp>
-#include <luvk/Types/Material.hpp>
 #include "UserInterface/Application/Application.hpp"
 #include "UserInterface/Components/Camera.hpp"
 
@@ -138,49 +137,41 @@ float4 entry_fragment(PrimData input) : SV_Target
 }
 )";
 
-Cube::Cube(const std::shared_ptr<luvk::Device>&         Device,
-           const std::shared_ptr<luvk::SwapChain>&      Swap,
-           const std::shared_ptr<luvk::Memory>&         Memory,
-           const std::shared_ptr<luvk::DescriptorPool>& Pool)
-    : Mesh(Device, Memory),
+Cube::Cube(luvk::Device* Device, const luvk::SwapChain* Swap, luvk::Memory* Memory)
+    : MeshShaderMesh(Device, Memory),
       m_Pipeline(std::make_shared<luvk::Pipeline>(Device))
 {
-    constexpr VkPushConstantRange PushConstantRange{VK_SHADER_STAGE_MESH_BIT_EXT, 0, sizeof(glm::mat4)};
+    constexpr VkPushConstantRange PushConstantRange{VK_SHADER_STAGE_MESH_BIT_EXT | VK_SHADER_STAGE_TASK_BIT_EXT, 0, sizeof(glm::mat4)};
+    const VkFormat                Format = Swap->GetFormat();
 
-    const auto Set = std::make_shared<luvk::DescriptorSet>(Device, Pool, Memory);
-    Set->CreateLayout({});
-    Set->Allocate();
-
-    m_Pipeline->CreateMeshPipeline({.Extent = Swap->GetExtent(),
-                                    .ColorFormats = std::array{Swap->GetCreationArguments().Format},
-                                    .RenderPass = Swap->GetRenderPass(),
-                                    .Subpass = 0,
-                                    .TaskShader = luvk::CompileShader(g_CubeTaskShader, "spirv_1_4"),
-                                    .MeshShader = luvk::CompileShader(g_CubeMeshShader, "spirv_1_4"),
+    m_Pipeline->CreateMeshPipeline({.TaskShader     = luvk::CompileShader(g_CubeTaskShader),
+                                    .MeshShader     = luvk::CompileShader(g_CubeMeshShader),
                                     .FragmentShader = luvk::CompileShader(g_CubeFragmentShader),
-                                    .SetLayouts = std::array{Set->GetLayout()},
-                                    .PushConstants = std::array{PushConstantRange},
-                                    .CullMode = VK_CULL_MODE_NONE});
+                                    .ColorFormats   = std::span{&Format, 1},
+                                    .CullMode       = VK_CULL_MODE_BACK_BIT,
+                                    .PushConstants  = std::span{&PushConstantRange, 1}});
 
     m_Material = std::make_shared<luvk::Material>();
     m_Material->SetPipeline(m_Pipeline);
-    m_Material->SetDescriptorSet(Set);
-
-    SetDispatchCount(1, 1, 1);
 }
 
-void Cube::Tick(const float DeltaTime)
+void Cube::Tick(const float DeltaTime) const
 {
     const auto AppInstance = Application::GetInstance();
+    if (!AppInstance)
+    {
+        return;
+    }
 
-    glm::mat4 Proj = glm::perspective(glm::radians(45.F), static_cast<float>(AppInstance->GetWidth()) / static_cast<float>(AppInstance->GetHeight()), 0.1F, 10.F);
-    Proj[1][1]     *= -1.F;
-
+    glm::mat4 Proj = glm::perspective(glm::radians(45.F),
+                                      static_cast<float>(AppInstance->GetWidth()) / static_cast<float>(AppInstance->GetHeight()),
+                                      0.1F,
+                                      10.F);
+    Proj[1][1]                     *= -1.F;
     static constinit float Elapsed = 0.F;
     Elapsed                        += DeltaTime;
+    const glm::mat4 Model          = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));
+    m_Mvp                          = Proj * AppInstance->GetCamera()->GetViewMatrix() * Model;
 
-    const glm::mat4 Model = glm::rotate(glm::mat4(1.F), Elapsed, glm::vec3(0.F, 1.F, 0.F));
-    m_Mvp                 = Proj * AppInstance->GetCamera()->GetViewMatrix() * Model;
-
-    SetPushConstantData(std::as_bytes(std::span{&m_Mvp, 1}));
+    m_Material->SetData(std::as_bytes(std::span{&m_Mvp, 1}));
 }

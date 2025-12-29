@@ -10,7 +10,7 @@
 
 using namespace Core;
 
-ImGuiLayerBase::ImGuiLayerBase(SDL_Window* Window, std::shared_ptr<luvk::Renderer> const& Renderer)
+ImGuiLayerBase::ImGuiLayerBase(SDL_Window* Window, const std::shared_ptr<luvk::Renderer>& Renderer)
 {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -18,14 +18,8 @@ ImGuiLayerBase::ImGuiLayerBase(SDL_Window* Window, std::shared_ptr<luvk::Rendere
     ImGuiIO& IO    = ImGui::GetIO();
     IO.ConfigFlags |= ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_ViewportsEnable | ImGuiConfigFlags_NavEnableKeyboard;
 
-    const luvk::RenderModules& Modules = Renderer->GetModules();
-
     m_SdlBackend    = std::make_unique<ImGuiBackendSDL>(Window);
-    m_VulkanBackend = std::make_unique<ImGuiBackendVulkan>(Renderer->GetInstance(),
-                                                           Modules.DeviceModule,
-                                                           Modules.DescriptorPoolModule,
-                                                           Modules.SwapChainModule,
-                                                           Modules.MemoryModule);
+    m_VulkanBackend = std::make_unique<ImGuiBackendVulkan>(Renderer.get());
 }
 
 ImGuiLayerBase::~ImGuiLayerBase()
@@ -137,10 +131,13 @@ void ImGuiLayerBase::PushStyle() const
     ImGuiColors[ImGuiCol_ModalWindowDimBg]      = ImVec4(0.196078434586525f, 0.1764705926179886f, 0.5450980663299561f, 0.501960813999176F);
 }
 
-void ImGuiLayerBase::Render(const VkCommandBuffer Cmd, const std::uint32_t CurrentFrame) const
+void ImGuiLayerBase::Render(const VkCommandBuffer Cmd) const
 {
-    m_VulkanBackend->Render(Cmd, CurrentFrame);
+    m_VulkanBackend->Render(Cmd);
+}
 
+void ImGuiLayerBase::RenderPlatformWindows() const
+{
     if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
     {
         ImGui::UpdatePlatformWindows();

@@ -1,14 +1,13 @@
 /*
- * Author: Lucas Vilas-Boas
+* Author: Lucas Vilas-Boas
  * Year: 2025
  * Repo: https://github.com/lucoiso/luvk_example
  */
 
 #pragma once
 
-#include <memory>
 #include <glm/glm.hpp>
-#include <luvk/Types/Mesh.hpp>
+#include <luvk/Resources/Mesh.hpp>
 
 namespace luvk
 {
@@ -17,17 +16,21 @@ namespace luvk
 
 namespace UserInterface
 {
+    struct PixelInstanceInfo
+    {
+        luvk::Transform      XForm;
+        std::array<float, 4> Color{};
+    };
+
     class Pixel : public luvk::Mesh
     {
-        std::uint32_t             m_FrameIndex{0};
-        std::vector<InstanceInfo> m_LocalInstances{};
+        std::vector<PixelInstanceInfo> m_LocalInstances{};
+        std::shared_ptr<luvk::Buffer>  m_InstanceBuffer;
 
     public:
-        Pixel(const std::shared_ptr<luvk::Device>&    Device,
-              const std::shared_ptr<luvk::SwapChain>& Swap,
-              const std::shared_ptr<luvk::Memory>&    Memory);
+        Pixel(luvk::Device* Device, const luvk::SwapChain* Swap, luvk::Memory* Memory);
 
         void AddInstance(const glm::vec2& Position);
-        void Render(VkCommandBuffer CommandBuffer, std::uint32_t CurrentFrame) const override;
+        void Render(VkCommandBuffer CommandBuffer) const override;
     };
 }

@@ -1,5 +1,5 @@
 /*
- * Author: Lucas Vilas-Boas
+* Author: Lucas Vilas-Boas
  * Year: 2025
  * Repo: https://github.com/lucoiso/luvk_example
  */
@@ -11,51 +11,56 @@
 #include <vector>
 #include <volk.h>
 
+#include "luvk/Resources/DescriptorSet.hpp"
+
 namespace luvk
 {
-    class Device;
-    class DescriptorPool;
-    class Memory;
     class Texture;
     class Pipeline;
     class DescriptorSet;
+    class Device;
+    class DescriptorPool;
+    class Memory;
+    class Renderer;
 }
 
 namespace UserInterface
 {
     class ShaderImage
     {
-        float         m_TotalTime{0.0f};
-        VkRenderPass  m_RenderPass{VK_NULL_HANDLE};
-        VkFramebuffer m_Framebuffer{VK_NULL_HANDLE};
+        float m_TotalTime{0.0f};
 
         std::shared_ptr<luvk::Texture>       m_Texture{};
         std::shared_ptr<luvk::Pipeline>      m_Pipeline{};
         std::shared_ptr<luvk::DescriptorSet> m_DescriptorSet{};
 
-        std::shared_ptr<luvk::Device>         m_Device;
-        std::shared_ptr<luvk::DescriptorPool> m_Pool;
-        std::shared_ptr<luvk::Memory>         m_Memory;
+        luvk::Device*                 m_Device{nullptr};
+        luvk::DescriptorPool*         m_Pool{nullptr};
+        luvk::Memory*                 m_Memory{nullptr};
+        std::weak_ptr<luvk::Renderer> m_Renderer;
 
         std::vector<std::uint32_t> m_CachedVertexShader{};
+        std::vector<std::uint32_t> m_CachedDefaultFragShader{};
 
     public:
-        ShaderImage(std::shared_ptr<luvk::Device>         Device,
-                    std::shared_ptr<luvk::DescriptorPool> Pool,
-                    std::shared_ptr<luvk::Memory>         Memory);
+        explicit ShaderImage(const std::shared_ptr<luvk::Renderer>& Renderer);
         ~ShaderImage();
 
-        void Update(VkCommandBuffer Cmd, float DeltaTime);
+        void RecordCommands(VkCommandBuffer Cmd) const;
+        void UpdateImmediate(float DeltaTime);
 
         [[nodiscard]] bool Compile(const std::string& Source, std::string& OutError);
         void               Reset();
 
-        [[nodiscard]] VkDescriptorSet GetDescriptorSet() const;
-        static std::string            GetDefaultSource();
+        [[nodiscard]] VkDescriptorSet GetDescriptorSet() const
+        {
+            return m_DescriptorSet->GetHandle();
+        }
+
+        static std::string_view GetDefaultSource();
 
     private:
         void Initialize();
         void CreatePipeline(const std::vector<std::uint32_t>& FragSpirv);
-        void TransitionLayout() const;
     };
 }

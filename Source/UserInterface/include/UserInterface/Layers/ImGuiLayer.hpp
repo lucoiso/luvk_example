@@ -13,15 +13,11 @@
 
 struct ImGuiInputTextCallbackData;
 
-namespace luvk
-{
-    class DescriptorPool;
-}
-
 namespace UserInterface
 {
     class ImGuiLayer : public Core::ImGuiLayerBase
     {
+        bool m_CompileRequested{false};
         bool        m_CompileSuccess{true};
         std::string m_ShaderCode;
         std::string m_StatusMessage{"Ready"};
@@ -29,23 +25,21 @@ namespace UserInterface
         std::unique_ptr<ShaderImage> m_ShaderImage{};
 
     public:
-        explicit ImGuiLayer(SDL_Window*                            Window,
-                            std::shared_ptr<luvk::Renderer> const& Renderer);
+        explicit ImGuiLayer(SDL_Window* Window, const std::shared_ptr<luvk::Renderer>& Renderer);
 
         ~ImGuiLayer() override;
 
         void Draw() override;
-        void UpdatePreview(VkCommandBuffer Cmd) const;
+        void RecordCommands(VkCommandBuffer Cmd) const;
+        void UpdatePreviewImmediate(float DeltaTime) const;
+
+        void ExecutePendingCompile();
 
     private:
-        void InitializeResources(std::shared_ptr<luvk::Device> const&         Device,
-                                 std::shared_ptr<luvk::DescriptorPool> const& Pool,
-                                 std::shared_ptr<luvk::Memory> const&         Memory);
+        void InitializeResources(const std::shared_ptr<luvk::Renderer>& Renderer);
 
         void DrawEditor();
         void DrawTexture() const;
-
-        void CompileShader();
 
         static int InputTextCallback(ImGuiInputTextCallbackData* Data);
     };
